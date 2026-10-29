@@ -16,13 +16,17 @@ export async function GET(
     );
   }
 
-  // Calculate live astronomical Azaan times via AlAdhan API with local fallback
+  // Calculate live astronomical Azaan times via UmmahAPI (primary) -> AlAdhan -> Offline engine
   const astronomical = await getLiveAstronomicalTimes(
     masjid.latitude,
     masjid.longitude,
     masjid.timezone,
     masjid.calculationMethod.toLowerCase().includes("ummalqura") ? 4 : 1
   );
+
+  let providerLabel = "UmmahAPI (ummahapi.com)";
+  if (astronomical.source === "aladhan-api") providerLabel = "AlAdhan Global API (v1)";
+  if (astronomical.source === "offline-engine") providerLabel = "Adhan JS (Offline Engine)";
 
   return NextResponse.json({
     success: true,
@@ -32,7 +36,7 @@ export async function GET(
     },
     provenance: {
       sourceTier: masjid.category === "landmark" ? 1 : 2,
-      astronomicalProvider: astronomical.source === "aladhan-api" ? "AlAdhan Global API (v1)" : "Adhan JS (Offline Engine)",
+      astronomicalProvider: providerLabel,
       hijriDate: astronomical.hijriDate || null,
       timestamp: new Date().toISOString(),
     },

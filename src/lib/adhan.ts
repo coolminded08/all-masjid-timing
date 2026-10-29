@@ -8,7 +8,7 @@ export interface ComputedAstronomicalTimes {
   maghrib: string;
   isha: string;
   hijriDate?: string;
-  source: "aladhan-api" | "offline-engine";
+  source: "ummah-api" | "aladhan-api" | "offline-engine";
 }
 
 function formatTime(date: Date, timezone: string): string {
@@ -20,33 +20,70 @@ function formatTime(date: Date, timezone: string): string {
   }).format(date);
 }
 
+const UMMAH_KEY = process.env.UMMAH_API_KEY || "umh_0e672a937d45f3c4a6d5eb5979d5fdebcdf152f0";
+
 /**
- * 1. Tries to fetch exact astronomical prayer times + Hijri calendar from AlAdhan API.
- * 2. Falls back to local offline Adhan JS math engine in 0ms if offline or on network error.
+ * Triple-Redundancy Astronomical Provider:
+ * 1. UmmahAPI (Fastest, dedicated authenticated key)
+ * 2. AlAdhan API (Global secondary fallback)
+ * 3. Local Adhan JS engine (0ms offline failover)
  */
 export async function getLiveAstronomicalTimes(
   latitude: number,
   longitude: number,
   timezone: string = "Asia/Kolkata",
-  methodId: number = 1 // 1: Karachi, 3: MWL, 4: Umm Al-Qura
+  methodId: number = 1
 ): Promise<ComputedAstronomicalTimes> {
-  const timestamp = Math.floor(Date.now() / 1000);
-  const aladhanUrl = `https://api.aladhan.com/v1/timings/${timestamp}?latitude=${latitude}&longitude=${longitude}&method=${methodId}&school=1`;
-
+  // Strategy 1: UmmahAPI (using your developer key)
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 2500); // 2.5s fast timeout
+    const timeout = setTimeout(() => controller.abort(), 2000);
+
+    const ummahUrl = `https://ummahapi.com/api/prayer-times?lat=${latitude.toFixed(2)}&lng=${longitude.toFixed(2)}&apikey=${UMMAH_KEY}`;
+    const res = await fetch(ummahUrl, {
+      signal: controller.signal,
+      next: { revalidate: 3600 },
+    });
+    clearTimeout(timeout);
+
+    if (res.ok) {
+      const json = await res.json();
+      if (json.success && json.data?.prayer_times) {
+        const t = json.data.prayer_times;
+        return {
+          fajr: t.fajr,
+          sunrise: t.sunrise,
+          dhuhr: t.dhuhr,
+          asr: t.asr,
+          maghrib: t.maghrib,
+          isha: t.isha,
+          source: "ummah-api",
+        };
+      }
+    }
+  } catch (e) {
+    // Failover to Strategy 2
+    console.warn("UmmahAPI request failed or timed out; falling back to AlAdhan.");
+  }
+
+  // Strategy 2: AlAdhan Global API
+  try {
+    const timestamp = Math.floor(Date.now() / 1000);
+    const aladhanUrl = `https://api.aladhan.com/v1/timings/${timestamp}?latitude=${latitude}&longitude=${longitude}&method=${methodId}&school=1`;
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 2000);
 
     const res = await fetch(aladhanUrl, {
       signal: controller.signal,
-      next: { revalidate: 3600 }, // Cache on edge for 1 hour
+      next: { revalidate: 3600 },
     });
     clearTimeout(timeout);
 
     if (res.ok) {
       const json = await res.json();
       const t = json.data.timings;
-      const h = json.data.date.hijri;
+      const h = json.data.date?.hijri;
 
       return {
         fajr: t.Fajr.slice(0, 5),
@@ -55,16 +92,15 @@ export async function getLiveAstronomicalTimes(
         asr: t.Asr.slice(0, 5),
         maghrib: t.Maghrib.slice(0, 5),
         isha: t.Isha.slice(0, 5),
-        hijriDate: `${h.day} ${h.month.en} ${h.year} AH`,
+        hijriDate: h ? `${h.day} ${h.month.en} ${h.year} AH` : undefined,
         source: "aladhan-api",
       };
     }
   } catch (err) {
-    // Graceful offline fallback
-    console.warn("AlAdhan network fetch timed out or offline, using local calculation engine.");
+    console.warn("AlAdhan network fetch failed; falling back to local calculation engine.");
   }
 
-  // Local Offline Calculation Engine Fallback
+  // Strategy 3: Local Offline Calculation Engine Fallback (0ms, 100% uptime)
   return computeDailyAstronomicalTimes(latitude, longitude, new Date(), "Karachi", timezone);
 }
 

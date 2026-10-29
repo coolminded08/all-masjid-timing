@@ -63,6 +63,13 @@ export default function Navbar() {
               Hierarchy
             </Link>
             <Link
+              href="/admin"
+              className="px-3 py-2 rounded-md hover:text-emerald-700 hover:bg-emerald-50 transition-colors flex items-center gap-1.5"
+            >
+              <CheckCircle2 className="w-3.5 h-3.5 text-slate-400" />
+              Moderation
+            </Link>
+            <Link
               href="/api/v1/export"
               target="_blank"
               className="px-3 py-2 rounded-md hover:text-emerald-700 hover:bg-emerald-50 transition-colors flex items-center gap-1.5"

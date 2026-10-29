@@ -50,6 +50,13 @@ export default function Navbar() {
               Nearest Masjids
             </Link>
             <Link
+              href="/map"
+              className="px-3 py-2 rounded-md hover:text-emerald-700 hover:bg-emerald-50 transition-colors flex items-center gap-1.5"
+            >
+              <MapPin className="w-4 h-4 text-emerald-600" />
+              Map View
+            </Link>
+            <Link
               href="/catch"
               className="px-3 py-2 rounded-md hover:text-emerald-700 hover:bg-emerald-50 transition-colors flex items-center gap-1.5"
             >
@@ -70,12 +77,23 @@ export default function Navbar() {
               Moderation
             </Link>
             <Link
-              href="/api/v1/export"
-              target="_blank"
+              href="/qibla"
+              className="px-3 py-2 rounded-md hover:text-emerald-700 hover:bg-emerald-50 transition-colors"
+            >
+              Qibla
+            </Link>
+            <Link
+              href="/ramadan"
+              className="px-3 py-2 rounded-md hover:text-emerald-700 hover:bg-emerald-50 transition-colors"
+            >
+              Ramadan &amp; Eid
+            </Link>
+            <Link
+              href="/docs"
               className="px-3 py-2 rounded-md hover:text-emerald-700 hover:bg-emerald-50 transition-colors flex items-center gap-1.5"
             >
               <Code2 className="w-4 h-4 text-slate-400" />
-              Open API
+              API Docs
             </Link>
           </nav>
 

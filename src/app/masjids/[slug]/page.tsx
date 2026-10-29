@@ -147,6 +147,15 @@ export default function MasjidDetailPage() {
             </button>
 
             <Link
+              href={`/masjids/${masjid.slug}/print`}
+              target="_blank"
+              className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all shadow-sm"
+              title="Print Monthly Timetable for Notice Board"
+            >
+              Print Chart
+            </Link>
+
+            <Link
               href={`/display/${masjid.slug}`}
               target="_blank"
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-all shadow-sm"

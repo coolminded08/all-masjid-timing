@@ -1,0 +1,32 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --primary: #047857;
+  --primary-foreground: #ffffff;
+  --border: #e2e8f0;
+}
+
+@layer base {
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+}
+
+/* Custom scrollbars & smooth transitions */
+html {
+  scroll-behavior: smooth;
+}
+
+.islamic-pattern-bg {
+  background-color: #064e3b;
+  background-image: radial-gradient(#059669 1px, transparent 1px);
+  background-size: 20px 20px;
+}

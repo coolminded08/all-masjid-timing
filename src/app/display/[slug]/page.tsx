@@ -2,10 +2,34 @@
 
 import React, { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { Clock, VolumeX, Sparkles, MapPin, ShieldCheck } from "lucide-react";
+import { Clock, VolumeX, Sparkles, MapPin, BookOpen } from "lucide-react";
 import { Masjid, PrayerName } from "@/lib/types";
 
 const PRAYERS: PrayerName[] = ["fajr", "dhuhr", "asr", "maghrib", "isha"];
+
+// Authentic Daily Azkar & Hadith (Inspired by Hisnul Muslim / MyPrayers)
+const ROTATING_AZKAR = [
+  {
+    arabic: "اللَّهُمَّ أَنْتَ السَّلَامُ وَمِنْكَ السَّلَامُ تَبَارَكْتَ يَا ذَا الْجَلَالِ وَالْإِكْرَامِ",
+    english: "O Allah, You are Peace and from You comes peace. Blessed are You, O Owner of majesty and honor.",
+    source: "Sahih Muslim",
+  },
+  {
+    arabic: "سُبْحَانَ اللَّهِ وَبِحَمْدِهِ ، سُبْحَانَ اللَّهِ الْعَظِيمِ",
+    english: "Glory be to Allah and His is the praise. Glory be to Allah, the Magnificent.",
+    source: "Sahih al-Bukhari",
+  },
+  {
+    arabic: "لا حَوْلَ وَلا قُوَّةَ إِلا بِاللَّهِ",
+    english: "There is no power and no strength except with Allah (a treasure of Paradise).",
+    source: "Sahih al-Bukhari",
+  },
+  {
+    arabic: "اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ وَعَلَى آلِ مُحَمَّدٍ",
+    english: "O Allah, send blessings upon Muhammad and upon the family of Muhammad.",
+    source: "Sunan an-Nasa'i",
+  },
+];
 
 export default function TvDisplayPage() {
   const params = useParams();
@@ -14,6 +38,7 @@ export default function TvDisplayPage() {
   const [masjid, setMasjid] = useState<Masjid | null>(null);
   const [currentTime, setCurrentTime] = useState("");
   const [currentDate, setCurrentDate] = useState("");
+  const [azkarIndex, setAzkarIndex] = useState(0);
 
   useEffect(() => {
     async function load() {
@@ -24,6 +49,7 @@ export default function TvDisplayPage() {
     load();
   }, [slug]);
 
+  // Clock Ticker
   useEffect(() => {
     function tick() {
       const now = new Date();
@@ -49,6 +75,14 @@ export default function TvDisplayPage() {
     return () => clearInterval(timer);
   }, []);
 
+  // Rotate Azkar every 15 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setAzkarIndex((prev) => (prev + 1) % ROTATING_AZKAR.length);
+    }, 15000);
+    return () => clearInterval(interval);
+  }, []);
+
   if (!masjid) {
     return (
       <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
@@ -56,6 +90,8 @@ export default function TvDisplayPage() {
       </div>
     );
   }
+
+  const currentDua = ROTATING_AZKAR[azkarIndex];
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-950 via-emerald-950 to-slate-950 text-white p-6 sm:p-12 flex flex-col justify-between select-none">
@@ -114,6 +150,20 @@ export default function TvDisplayPage() {
             </div>
           );
         })}
+      </div>
+
+      {/* Rotating Azkar & Daily Hadith Banner */}
+      <div className="bg-emerald-900/30 border border-emerald-700/40 rounded-2xl p-5 text-center space-y-2 mb-4">
+        <div className="flex items-center justify-center gap-2 text-xs font-bold text-gold-400 uppercase tracking-widest">
+          <BookOpen className="w-4 h-4" />
+          Dua &bull; Dhikr of the Moment ({currentDua.source})
+        </div>
+        <p className="text-xl sm:text-2xl font-serif text-white tracking-wide" dir="rtl">
+          {currentDua.arabic}
+        </p>
+        <p className="text-xs sm:text-sm text-emerald-200 italic max-w-2xl mx-auto">
+          &ldquo;{currentDua.english}&rdquo;
+        </p>
       </div>
 
       {/* Jumu'ah & Silence Reminder Banner */}

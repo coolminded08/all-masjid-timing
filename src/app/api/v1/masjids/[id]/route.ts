@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getMasjidBySlug } from "@/lib/store";
-import { computeDailyAstronomicalTimes } from "@/lib/adhan";
+import { getLiveAstronomicalTimes } from "@/lib/adhan";
 
 export async function GET(
   request: NextRequest,
@@ -16,13 +16,12 @@ export async function GET(
     );
   }
 
-  // Calculate live astronomical Azaan times for today
-  const astronomical = computeDailyAstronomicalTimes(
+  // Calculate live astronomical Azaan times via AlAdhan API with local fallback
+  const astronomical = await getLiveAstronomicalTimes(
     masjid.latitude,
     masjid.longitude,
-    new Date(),
-    masjid.calculationMethod,
-    masjid.timezone
+    masjid.timezone,
+    masjid.calculationMethod.toLowerCase().includes("ummalqura") ? 4 : 1
   );
 
   return NextResponse.json({
@@ -33,7 +32,8 @@ export async function GET(
     },
     provenance: {
       sourceTier: masjid.category === "landmark" ? 1 : 2,
-      astronomicalEngine: "Adhan JS (Karachi / MWL / UmmAlQura)",
+      astronomicalProvider: astronomical.source === "aladhan-api" ? "AlAdhan Global API (v1)" : "Adhan JS (Offline Engine)",
+      hijriDate: astronomical.hijriDate || null,
       timestamp: new Date().toISOString(),
     },
   });

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import {
   Search,
   MapPin,
@@ -12,9 +13,22 @@ import {
   Navigation,
   Loader2,
   CheckCircle2,
+  Clock,
+  ArrowRight,
+  TrendingUp,
 } from "lucide-react";
 import MasjidCard from "@/components/MasjidCard";
 import { Masjid } from "@/lib/types";
+
+// Dynamic import for Three.js 3D Mosque viewer to ensure client-side rendering
+const Mosque3DViewer = dynamic(() => import("@/components/Mosque3DViewer"), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-full min-h-[340px] flex items-center justify-center">
+      <Loader2 className="w-8 h-8 text-emerald-400 animate-spin" />
+    </div>
+  ),
+});
 
 export default function HomePage() {
   const [masjids, setMasjids] = useState<Array<Masjid & { distanceMeters?: number }>>([]);
@@ -33,7 +47,7 @@ export default function HomePage() {
     try {
       let url = "/api/v1/masjids";
       if (lat && lng) {
-        url += `?lat=${lat}&lng=${lng}&radius=20000`;
+        url += `?lat=${lat}&lng=${lng}&radius=25000`;
       }
       const res = await fetch(url);
       const json = await res.json();
@@ -83,135 +97,157 @@ export default function HomePage() {
   });
 
   return (
-    <div className="space-y-8 pb-16">
-      {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-emerald-900 via-emerald-850 to-emerald-950 text-white py-16 px-4 sm:px-6 lg:px-8 border-b border-emerald-800">
-        <div className="absolute inset-0 opacity-10 islamic-pattern-bg pointer-events-none" />
-        <div className="relative max-w-4xl mx-auto text-center space-y-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-800/80 text-emerald-200 border border-emerald-700/60 shadow-inner">
-            <Sparkles className="w-3.5 h-3.5 text-gold-400" />
-            <span>Community-Verified Iqamah Directory</span>
-          </div>
+    <div className="space-y-12 pb-20">
+      {/* 3D Immersive Hero Section */}
+      <section className="relative overflow-hidden bg-radial from-emerald-900 via-emerald-950 to-slate-950 text-white py-14 px-4 sm:px-6 lg:px-8 border-b border-emerald-800/60 shadow-2xl">
+        {/* Ambient Glows */}
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-10 right-1/4 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
 
-          <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-white leading-tight">
-            Know Exactly When the <br />
-            <span className="text-emerald-300">Congregation (Iqamah)</span> Starts.
-          </h1>
-
-          <p className="text-sm sm:text-base text-emerald-100/90 max-w-2xl mx-auto font-normal leading-relaxed">
-            Azaan timings tell you when the prayer begins; <strong>Iqamah timings</strong> tell you
-            when the Jama&apos;ah stands. Verified by local worshippers and protected by Cloudflare.
-          </p>
-
-          {/* Search & Location Bar */}
-          <div className="pt-4 max-w-2xl mx-auto flex flex-col sm:flex-row gap-2.5">
-            <div className="relative flex-1">
-              <Search className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Search by mosque name, locality (e.g. Lal Chowk, Makkah)..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-11 pr-4 py-3 rounded-xl bg-white text-slate-900 placeholder-slate-400 text-sm font-medium shadow-md focus:outline-none focus:ring-2 focus:ring-emerald-400"
-              />
+        <div className="relative max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+          {/* Left Column: Heading, Value Prop & Search */}
+          <div className="lg:col-span-7 space-y-6 text-center lg:text-left">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold bg-emerald-800/60 text-emerald-200 border border-emerald-600/40 backdrop-blur-md shadow-inner">
+              <Sparkles className="w-4 h-4 text-amber-400" />
+              <span>Next-Gen Community Iqamah Directory</span>
             </div>
 
-            <button
-              onClick={handleUseLocation}
-              disabled={locating}
-              className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold shadow-md transition-all focus:outline-none focus:ring-2 focus:ring-emerald-300 min-h-[44px]"
-            >
-              {locating ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Navigation className="w-4 h-4 text-emerald-200" />
-              )}
-              <span>{userLocation ? "Location Active" : "Find Near Me"}</span>
-            </button>
+            <h1 className="text-4xl sm:text-6xl font-black tracking-tight text-white leading-[1.12]">
+              Know Exactly When <br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 via-teal-200 to-amber-200">
+                The Congregation Stands.
+              </span>
+            </h1>
+
+            <p className="text-base sm:text-lg text-emerald-100/85 max-w-xl font-normal leading-relaxed">
+              Azaan calls you to prayer; <strong>Iqamah</strong> is when the prayer begins in Jama&apos;ah.
+              Real-time timings crowdsourced by local worshippers and secured with cryptographic proximity checks.
+            </p>
+
+            {/* Glassmorphic Search & Location Box */}
+            <div className="pt-2 max-w-xl flex flex-col sm:flex-row gap-3">
+              <div className="relative flex-1">
+                <Search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search mosque, locality, or city (e.g. Lal Chowk, Makkah)..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-12 pr-4 py-3.5 rounded-2xl bg-white/95 text-slate-900 placeholder-slate-400 text-sm font-semibold shadow-lg backdrop-blur-md focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-all"
+                />
+              </div>
+
+              <button
+                onClick={handleUseLocation}
+                disabled={locating}
+                className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white text-sm font-bold shadow-lg shadow-emerald-950/40 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-300 min-h-[48px] hover:scale-[1.02] active:scale-[0.98]"
+              >
+                {locating ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Navigation className="w-4 h-4 text-emerald-100" />
+                )}
+                <span>{userLocation ? "Location Locked" : "Locate Near Me"}</span>
+              </button>
+            </div>
+
+            {/* Badges */}
+            <div className="pt-2 flex flex-wrap items-center justify-center lg:justify-start gap-4 text-xs font-semibold text-emerald-200/90">
+              <span className="flex items-center gap-1.5 bg-emerald-950/40 px-3 py-1 rounded-lg border border-emerald-800/40">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                4-Tier Verification Engine
+              </span>
+              <span className="flex items-center gap-1.5 bg-emerald-950/40 px-3 py-1 rounded-lg border border-emerald-800/40">
+                <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                500m GPS Proximity Proof
+              </span>
+              <span className="flex items-center gap-1.5 bg-emerald-950/40 px-3 py-1 rounded-lg border border-emerald-800/40">
+                <Code2 className="w-4 h-4 text-emerald-400" />
+                Free Open Data API
+              </span>
+            </div>
           </div>
 
-          {/* Value Badges */}
-          <div className="pt-4 flex flex-wrap items-center justify-center gap-4 text-xs text-emerald-200/90">
-            <span className="flex items-center gap-1.5">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-              4-Tier Trust Model
-            </span>
-            <span className="flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4 text-emerald-400" />
-              Zero-SMS OTP (Cloudflare Verified)
-            </span>
-            <span className="flex items-center gap-1.5">
-              <Code2 className="w-4 h-4 text-emerald-400" />
-              Open API &amp; JSON Dumps
-            </span>
+          {/* Right Column: 3D Interactive Kaaba & Celestial Orbital Ring */}
+          <div className="lg:col-span-5 flex flex-col items-center justify-center">
+            <div className="relative w-full max-w-[420px] aspect-square rounded-3xl bg-emerald-950/30 border border-emerald-500/20 backdrop-blur-xl shadow-2xl p-2 flex items-center justify-center overflow-hidden">
+              <Mosque3DViewer />
+            </div>
           </div>
         </div>
       </section>
 
       {/* Main Content Area */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
-        {/* Navigation Tabs & Catch Jama'ah Banner */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-4">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+        {/* Navigation Tabs & Quick Action Bar */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-5">
           <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
             <button
               onClick={() => setSelectedFilter("all")}
-              className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
+              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
                 selectedFilter === "all"
-                  ? "bg-emerald-700 text-white shadow-sm"
+                  ? "bg-emerald-700 text-white shadow-md shadow-emerald-800/20"
                   : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
               }`}
             >
-              All Masjids ({masjids.length})
-            </button>
-            <button
-              onClick={() => setSelectedFilter("srinagar")}
-              className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
-                selectedFilter === "srinagar"
-                  ? "bg-emerald-700 text-white shadow-sm"
-                  : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
-              }`}
-            >
-              Pilot District: Srinagar
+              All Mosques ({masjids.length})
             </button>
             <button
               onClick={() => setSelectedFilter("landmark")}
-              className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
+              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
                 selectedFilter === "landmark"
-                  ? "bg-emerald-700 text-white shadow-sm"
+                  ? "bg-emerald-700 text-white shadow-md shadow-emerald-800/20"
                   : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
               }`}
             >
-              Landmarks &amp; Holy Sites
+              Landmarks &amp; Holy Mosques
+            </button>
+            <button
+              onClick={() => setSelectedFilter("srinagar")}
+              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                selectedFilter === "srinagar"
+                  ? "bg-emerald-700 text-white shadow-md shadow-emerald-800/20"
+                  : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
+              }`}
+            >
+              Srinagar Pilot
             </button>
           </div>
 
-          <Link
-            href="/catch"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gold-50 border border-gold-200 text-gold-900 text-xs font-bold hover:bg-gold-100 transition-colors"
-          >
-            <Compass className="w-4 h-4 text-gold-600" />
-            Try &quot;Catch My Jama&apos;ah&quot; Route Finder
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/catch"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-900 text-xs font-bold transition-all"
+            >
+              <Compass className="w-4 h-4 text-amber-600" />
+              <span>Catch My Jama&apos;ah</span>
+              <ArrowRight className="w-3.5 h-3.5 text-amber-600" />
+            </Link>
+          </div>
         </div>
 
-        {/* Masjids Listing Grid */}
+        {/* Directory Listing Grid */}
         {loading ? (
-          <div className="py-20 flex flex-col items-center justify-center text-slate-400 space-y-3">
+          <div className="flex flex-col items-center justify-center py-24 space-y-3">
             <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
-            <p className="text-sm">Locating masjids and live prayer timings...</p>
+            <p className="text-sm font-semibold text-slate-500">
+              Synchronizing astronomical and community timings...
+            </p>
           </div>
         ) : filteredMasjids.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center space-y-3 max-w-lg mx-auto">
-            <MapPin className="w-10 h-10 text-slate-300 mx-auto" />
-            <h3 className="text-lg font-bold text-slate-900">No masjids found</h3>
-            <p className="text-xs text-slate-500">
-              No matching mosque found in this area. You can be the first to add it!
+          <div className="bg-white rounded-3xl border border-slate-200 p-12 text-center max-w-lg mx-auto space-y-4 shadow-sm">
+            <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto text-slate-400">
+              <MapPin className="w-6 h-6" />
+            </div>
+            <h3 className="text-lg font-bold text-slate-800">No masjids found</h3>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              No mosques match your search query. Be the first to register this mosque to help local worshippers!
             </p>
             <Link
               href="/masjids/add"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-700 text-white text-xs font-semibold"
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-700 text-white text-xs font-bold shadow-md hover:bg-emerald-800 transition-colors"
             >
-              Add This Masjid
+              + Register New Mosque
             </Link>
           </div>
         ) : (

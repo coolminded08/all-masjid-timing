@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { isAuthenticatedAdmin } from "@/lib/auth";
+import { getAuthenticatedAdmin } from "@/lib/auth";
 
 export async function GET() {
-  const isAuthed = await isAuthenticatedAdmin();
+  const session = await getAuthenticatedAdmin();
 
-  if (!isAuthed) {
+  if (!session.authenticated) {
     return NextResponse.json(
       { success: false, authenticated: false },
       { status: 401 }
@@ -14,9 +14,6 @@ export async function GET() {
   return NextResponse.json({
     success: true,
     authenticated: true,
-    user: {
-      username: process.env.ADMIN_USERNAME || "admin",
-      role: "super_admin",
-    },
+    user: session.user,
   });
 }

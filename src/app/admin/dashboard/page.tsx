@@ -52,6 +52,12 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"proposals" | "masjids" | "tutors" | "system">("proposals");
   const [toast, setToast] = useState<string | null>(null);
+  const [adminUser, setAdminUser] = useState<{
+    email?: string;
+    username?: string;
+    role: string;
+    provider?: string;
+  } | null>(null);
 
   // Queues
   const [proposals, setProposals] = useState<PendingProposal[]>([
@@ -110,6 +116,8 @@ export default function AdminDashboardPage() {
           router.replace("/admin/login");
           return;
         }
+
+        setAdminUser(data.user);
 
         // Fetch tutors for moderation
         const tutorsRes = await fetch("/api/v1/tutors");
@@ -185,6 +193,11 @@ export default function AdminDashboardPage() {
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 mb-1">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             Live Moderation Console
+            {adminUser && (
+              <span className="ml-2 px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-[10px] text-slate-600 dark:text-slate-300 font-mono lowercase">
+                {adminUser.provider === "supabase" ? "supabase auth" : "local fallback"}: {adminUser.email || adminUser.username}
+              </span>
+            )}
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">
             Admin Management Dashboard

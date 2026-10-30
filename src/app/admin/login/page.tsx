@@ -14,13 +14,14 @@ import {
   Sparkles,
   AlertCircle,
   KeyRound,
+  Database,
 } from "lucide-react";
 import TurnstileWidget from "@/components/TurnstileWidget";
 
 export default function AdminLoginPage() {
   const router = useRouter();
 
-  const [username, setUsername] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState("");
@@ -54,12 +55,14 @@ export default function AdminLoginPage() {
 
     try {
       const token = turnstileToken || "cf-turnstile-verified";
+      const isEmail = identifier.includes("@");
 
       const res = await fetch("/api/v1/admin/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          username,
+          email: isEmail ? identifier : undefined,
+          username: !isEmail ? identifier : undefined,
           password,
           turnstileToken: token,
         }),
@@ -107,11 +110,15 @@ export default function AdminLoginPage() {
           <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-800 to-emerald-600 flex items-center justify-center text-white mx-auto shadow-md shadow-emerald-900/20">
             <Lock className="w-6 h-6" />
           </div>
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-[10px] font-mono font-semibold">
+            <Database className="w-3 h-3 text-emerald-600" />
+            Supabase Auth &bull; 2FA Ready
+          </div>
           <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
             Administrator Portal
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Sign in to moderate mosque proposals, verify tutors, and oversee data integrity.
+            Sign in with your verified Supabase administrator account to manage prayer times and tutors.
           </p>
         </div>
 
@@ -127,7 +134,7 @@ export default function AdminLoginPage() {
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
             <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
-              Admin Username
+              Admin Email or Username
             </label>
             <div className="relative">
               <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -135,9 +142,9 @@ export default function AdminLoginPage() {
                 type="text"
                 required
                 autoComplete="username"
-                placeholder="e.g. admin"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                placeholder="admin@allmasjidtiming.com or admin"
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
                 className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
@@ -145,7 +152,7 @@ export default function AdminLoginPage() {
 
           <div>
             <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
-              Secret Password
+              Password
             </label>
             <div className="relative">
               <KeyRound className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -153,7 +160,7 @@ export default function AdminLoginPage() {
                 type={showPassword ? "text" : "password"}
                 required
                 autoComplete="current-password"
-                placeholder="Enter admin password"
+                placeholder="Enter password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono"
@@ -193,7 +200,7 @@ export default function AdminLoginPage() {
         {/* Security badge footer */}
         <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-center gap-1.5 text-[11px] text-slate-400">
           <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-          <span>Secured Session Token &bull; HTTP-Only Cookie Protection</span>
+          <span>Supabase SSR Session &bull; PKCE JWT Protection</span>
         </div>
       </div>
     </div>

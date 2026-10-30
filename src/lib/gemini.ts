@@ -73,13 +73,13 @@ Return strictly a valid JSON object matching this schema:
     ? base64Data.split(",")[1]
     : base64Data;
 
-  // Primary model: gemini-2.5-flash (or gemini-1.5-flash fallback)
-  const modelsToTry = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
+  // Primary model: gemini-2.0-flash (fastest, high accuracy vision) or gemini-1.5-flash fallback
+  const modelsToTry = ["gemini-2.0-flash", "gemini-1.5-flash"];
   let lastError: any = null;
 
   for (const model of modelsToTry) {
     try {
-      const response = await ai.models.generateContent({
+      const responsePromise = ai.models.generateContent({
         model,
         contents: [
           {
@@ -102,6 +102,13 @@ Return strictly a valid JSON object matching this schema:
           temperature: 0.1, // low temperature for deterministic, accurate facts
         },
       });
+
+      // Timeout each individual model call after 6.5s to avoid serverless timeouts
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error(`Gemini ${model} request timed out`)), 6500)
+      );
+
+      const response = await Promise.race([responsePromise, timeoutPromise]);
 
       const responseText = response.text;
       if (!responseText) {

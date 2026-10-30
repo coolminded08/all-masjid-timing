@@ -60,7 +60,7 @@ Return strictly a valid JSON object matching this schema:
 
   for (const model of models) {
     try {
-      const response = await groq.chat.completions.create({
+      const groqPromise = groq.chat.completions.create({
         model,
         messages: [
           {
@@ -82,6 +82,12 @@ Return strictly a valid JSON object matching this schema:
         response_format: { type: "json_object" },
         temperature: 0.1,
       });
+
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error(`Groq ${model} request timed out`)), 5000)
+      );
+
+      const response = await Promise.race([groqPromise, timeoutPromise]);
 
       const responseText = response.choices[0]?.message?.content;
       if (!responseText) {

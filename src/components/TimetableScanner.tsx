@@ -77,11 +77,20 @@ export default function TimetableScanner({ onApply }: TimetableScannerProps) {
         if (res.status === 413 || responseText.includes("Too Large")) {
           throw new Error("Image file is too large for the network. Please choose a smaller photo.");
         }
+        if (responseText.includes("FUNCTION_INVOCATION_TIMEOUT") || res.status === 504) {
+          throw new Error(
+            "AI Scanner request timed out on Vercel. Please make sure GEMINI_API_KEY is configured in your Vercel Project Settings > Environment Variables, or fill timings manually."
+          );
+        }
         throw new Error(responseText.slice(0, 150) || `Server error (HTTP ${res.status})`);
       }
 
       if (!res.ok || !json.success) {
-        throw new Error(json.error || json.details || "Failed to analyze image");
+        throw new Error(
+          json.error ||
+          json.details ||
+          (json.suggestion ? `${json.error} ${json.suggestion}` : "Failed to analyze image")
+        );
       }
 
       setResult(json.data);

@@ -17,6 +17,7 @@ import {
   Calendar,
   Sparkles,
   ChevronDown,
+  BookOpen,
 } from "lucide-react";
 
 export default function Navbar() {
@@ -100,6 +101,18 @@ export default function Navbar() {
               }`}
             >
               Qibla Finder
+            </Link>
+
+            <Link
+              href="/tutors"
+              className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${
+                pathname.startsWith("/tutors")
+                  ? "bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold"
+                  : "hover:text-emerald-700 hover:bg-slate-50"
+              }`}
+            >
+              <BookOpen className="w-4 h-4 text-emerald-600" />
+              <span>Quran Tutors</span>
             </Link>
 
             {/* Dropdown for Secondary Tools to prevent navbar squish */}
@@ -222,6 +235,14 @@ export default function Navbar() {
           >
             <Sparkles className="w-4 h-4 text-amber-500" />
             Qibla Finder
+          </Link>
+          <Link
+            href="/tutors"
+            onClick={() => setMobileMenuOpen(false)}
+            className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl font-semibold text-sm text-slate-800 dark:text-slate-200 hover:bg-emerald-50"
+          >
+            <BookOpen className="w-4 h-4 text-emerald-600" />
+            Quran Tutors Directory
           </Link>
           <Link
             href="/ramadan"

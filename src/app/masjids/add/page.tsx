@@ -12,8 +12,11 @@ import {
   Loader2,
   Navigation,
   ArrowLeft,
+  Sparkles,
 } from "lucide-react";
 import { Masjid } from "@/lib/types";
+import TimetableScanner from "@/components/TimetableScanner";
+import { ExtractedTimetable } from "@/lib/gemini";
 
 export default function AddMasjidPage() {
   const router = useRouter();
@@ -49,6 +52,39 @@ export default function AddMasjidPage() {
     candidate: Masjid;
     distance: number;
   } | null>(null);
+  const [scanAppliedBanner, setScanAppliedBanner] = useState<string | null>(null);
+
+  function handleApplyExtracted(extracted: ExtractedTimetable) {
+    if (extracted.masjidName && !name) {
+      setName(extracted.masjidName);
+    }
+    if (extracted.locality && !locality) {
+      setLocality(extracted.locality);
+    }
+
+    setTimings((prev) => {
+      const updated = { ...prev };
+      const prayers = ["fajr", "dhuhr", "asr", "maghrib", "isha"] as const;
+
+      for (const p of prayers) {
+        const item = extracted.timings[p];
+        if (item?.iqamahTime) {
+          updated[p] = {
+            ...updated[p],
+            iqamahTime: item.iqamahTime,
+            azaanTime: item.azaanTime || updated[p].azaanTime,
+          };
+        }
+      }
+      return updated;
+    });
+
+    setScanAppliedBanner(
+      `Auto-filled timings successfully via ${
+        extracted.source === "gemini" ? "Gemini Vision AI" : "OCR Engine"
+      } (${Math.round(extracted.confidence * 100)}% match). Please review below.`
+    );
+  }
 
   function captureGPS() {
     if (!navigator.geolocation) {
@@ -181,6 +217,28 @@ export default function AddMasjidPage() {
                 View Existing Masjid &rarr;
               </Link>
             </div>
+          </div>
+        )}
+
+        {/* AI Timetable Scanner Section */}
+        <div className="mb-6">
+          <TimetableScanner onApply={handleApplyExtracted} />
+        </div>
+
+        {/* Scan Applied Success Notification */}
+        {scanAppliedBanner && (
+          <div className="mb-6 p-4 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-900 flex items-center justify-between text-xs font-semibold animate-in fade-in duration-300">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>{scanAppliedBanner}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setScanAppliedBanner(null)}
+              className="text-emerald-700 hover:text-emerald-900 underline text-[11px]"
+            >
+              Dismiss
+            </button>
           </div>
         )}
 

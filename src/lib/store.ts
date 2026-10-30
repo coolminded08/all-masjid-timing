@@ -1,4 +1,4 @@
-import { Masjid, TimingProposal, VotePayload } from "./types";
+import { Masjid, TimingProposal, VotePayload, QuranTutor, TutorGender, TutorTeachingMode, QuranSubject } from "./types";
 import { calculateDistanceMeters, isWithinProximityRadius } from "./geo";
 
 // Initial Seed Database: Landmark Masjids + Srinagar Pilot Region Masjids
@@ -339,4 +339,195 @@ export function submitProposal(
   };
   proposalsStore.push(proposal);
   return proposal;
+}
+
+
+// Quran Tutors In-Memory Seed Store
+let tutorsStore: QuranTutor[] = [
+  {
+    id: "tutor-qari-bilal",
+    slug: "qari-muhammad-bilal-srinagar",
+    name: "Qari Muhammad Bilal",
+    title: "Hafiz & Qari (Ijazah in Hafs 'an Asim)",
+    gender: "male",
+    bio: "Over 8 years experience teaching Noorani Qaida, Makhaarij, and Nazra Quran with authentic Tajweed rules. Trained at Darul Uloom with Sanad in Qira'at. Special focus on children's foundational pronunciation.",
+    isVerified: true,
+    hasIjazah: true,
+    subjects: ["noorani-qaida", "nazra-quran", "tajweed", "hifz"],
+    teachingMode: "both",
+    targetAudience: ["kids-boys", "kids-girls", "adult-brothers"],
+    experienceYears: 8,
+    languages: ["Urdu", "Kashmiri", "English"],
+    locality: "Rajbagh",
+    district: "Srinagar",
+    state: "Jammu & Kashmir",
+    country: "India",
+    feeType: "paid",
+    monthlyFeeAmount: 800,
+    freeTrialAvailable: true,
+    weeklyAvailabilityHours: 20,
+    whatsappNumber: "+917006123456",
+    phoneNumber: "+917006123456",
+    email: "qari.bilal@example.com",
+    createdAt: "2026-01-15T00:00:00Z",
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: "tutor-alimah-fatima",
+    slug: "alimah-fatima-zahra",
+    name: "Alimah Fatima Zahra",
+    title: "Alimah (Fazilat / Dars-e-Nizami)",
+    gender: "female",
+    bio: "Certified Alimah offering dedicated 1-on-1 Quran and Tajweed classes strictly for sisters and young children. Patient and friendly environment with daily revision and basic Sunnah duas.",
+    isVerified: true,
+    hasIjazah: true,
+    subjects: ["noorani-qaida", "nazra-quran", "tajweed", "tafseer-translation", "islamic-studies-duas"],
+    teachingMode: "online",
+    targetAudience: ["kids-girls", "adult-sisters"],
+    experienceYears: 6,
+    languages: ["Urdu", "English", "Kashmiri"],
+    locality: "Online Worldwide",
+    district: "Srinagar",
+    state: "Jammu & Kashmir",
+    country: "India",
+    feeType: "paid",
+    monthlyFeeAmount: 1000,
+    freeTrialAvailable: true,
+    weeklyAvailabilityHours: 15,
+    whatsappNumber: "+919419001122",
+    phoneNumber: "+919419001122",
+    email: "alimah.fatima@example.com",
+    createdAt: "2026-01-20T00:00:00Z",
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: "tutor-hafiz-tariq",
+    slug: "hafiz-tariq-ahmad",
+    name: "Hafiz Tariq Ahmad",
+    title: "Hafiz-e-Quran (Community Volunteer)",
+    gender: "male",
+    bio: "Teaching Quran Nazra and Hifz revision for local neighborhood youth. Teaches completely free (Fi Sabilillah) for orphans, underprivileged kids, and anyone with sincere intent to learn.",
+    isVerified: true,
+    hasIjazah: false,
+    subjects: ["nazra-quran", "hifz", "islamic-studies-duas"],
+    teachingMode: "in-person",
+    targetAudience: ["kids-boys", "adult-brothers"],
+    experienceYears: 5,
+    languages: ["Kashmiri", "Urdu"],
+    locality: "Khanyar",
+    district: "Srinagar",
+    state: "Jammu & Kashmir",
+    country: "India",
+    feeType: "free",
+    freeTrialAvailable: true,
+    weeklyAvailabilityHours: 10,
+    whatsappNumber: "+919906554433",
+    phoneNumber: "+919906554433",
+    createdAt: "2026-02-01T00:00:00Z",
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: "tutor-ustadh-zayd",
+    slug: "ustadh-zayd-al-hasani",
+    name: "Ustadh Zayd Al-Hasani",
+    title: "Qur'anic Arabic & Tajweed Specialist",
+    gender: "male",
+    bio: "Graduate in Qur'anic Sciences from Islamic University of Madinah. Teaches Quranic Arabic comprehension, word-by-word grammatical breakdown, and advanced Tajweed rules.",
+    isVerified: true,
+    hasIjazah: true,
+    subjects: ["tajweed", "tafseer-translation", "arabic-language"],
+    teachingMode: "online",
+    targetAudience: ["kids-boys", "adult-brothers"],
+    experienceYears: 10,
+    languages: ["English", "Arabic", "Urdu"],
+    locality: "Global Online",
+    country: "Saudi Arabia",
+    feeType: "flexible",
+    monthlyFeeAmount: 1500,
+    freeTrialAvailable: true,
+    weeklyAvailabilityHours: 25,
+    whatsappNumber: "+966501234567",
+    email: "ustadh.zayd@example.com",
+    createdAt: "2026-02-05T00:00:00Z",
+    updatedAt: new Date().toISOString(),
+  },
+];
+
+export interface TutorFilters {
+  gender?: TutorGender;
+  mode?: TutorTeachingMode;
+  subject?: QuranSubject;
+  feeType?: "free" | "paid" | "flexible";
+  query?: string;
+  hasIjazah?: boolean;
+}
+
+export function getQuranTutors(filters?: TutorFilters): QuranTutor[] {
+  let list = [...tutorsStore];
+
+  if (!filters) return list;
+
+  if (filters.gender) {
+    list = list.filter((t) => t.gender === filters.gender);
+  }
+
+  if (filters.mode && filters.mode !== "both") {
+    list = list.filter(
+      (t) => t.teachingMode === filters.mode || t.teachingMode === "both"
+    );
+  }
+
+  if (filters.subject) {
+    list = list.filter((t) => t.subjects.includes(filters.subject!));
+  }
+
+  if (filters.feeType) {
+    list = list.filter((t) => t.feeType === filters.feeType);
+  }
+
+  if (filters.hasIjazah !== undefined) {
+    list = list.filter((t) => t.hasIjazah === filters.hasIjazah);
+  }
+
+  if (filters.query) {
+    const q = filters.query.toLowerCase().trim();
+    list = list.filter(
+      (t) =>
+        t.name.toLowerCase().includes(q) ||
+        t.title.toLowerCase().includes(q) ||
+        t.bio.toLowerCase().includes(q) ||
+        (t.locality && t.locality.toLowerCase().includes(q)) ||
+        (t.district && t.district.toLowerCase().includes(q)) ||
+        t.languages.some((l) => l.toLowerCase().includes(q))
+    );
+  }
+
+  return list;
+}
+
+export function getQuranTutorBySlugOrId(idOrSlug: string): QuranTutor | null {
+  return (
+    tutorsStore.find(
+      (t) => t.id === idOrSlug || t.slug.toLowerCase() === idOrSlug.toLowerCase()
+    ) || null
+  );
+}
+
+export function addQuranTutor(data: Omit<QuranTutor, "id" | "slug" | "createdAt" | "updatedAt">): QuranTutor {
+  const baseSlug = data.name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+  const slug = `${baseSlug}-${Math.random().toString(36).substring(2, 6)}`;
+
+  const newTutor: QuranTutor = {
+    ...data,
+    id: `tutor-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+    slug,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  tutorsStore.unshift(newTutor);
+  return newTutor;
 }

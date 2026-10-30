@@ -88,3 +88,52 @@ export interface VotePayload {
   userLongitude?: number;
   turnstileToken?: string;
 }
+
+// Quran Tutor Directory Types
+export type TutorGender = "male" | "female";
+export type TutorTeachingMode = "online" | "in-person" | "both";
+export type QuranSubject =
+  | "noorani-qaida"
+  | "nazra-quran"
+  | "tajweed"
+  | "hifz"
+  | "tafseer-translation"
+  | "arabic-language"
+  | "islamic-studies-duas";
+
+export type TutorAudience =
+  | "kids-boys"
+  | "kids-girls"
+  | "adult-brothers"
+  | "adult-sisters";
+
+export interface QuranTutor {
+  id: string;
+  slug: string;
+  name: string;
+  title: string;
+  gender: TutorGender;
+  bio: string;
+  photoUrl?: string;
+  isVerified: boolean;
+  hasIjazah: boolean;
+  subjects: QuranSubject[];
+  teachingMode: TutorTeachingMode;
+  targetAudience: TutorAudience[];
+  experienceYears: number;
+  languages: string[];
+  locality?: string;
+  district?: string;
+  state?: string;
+  country: string;
+  feeType: "free" | "paid" | "flexible";
+  monthlyFeeAmount?: number;
+  freeTrialAvailable: boolean;
+  weeklyAvailabilityHours?: number;
+  whatsappNumber: string;
+  phoneNumber?: string;
+  email?: string;
+  turnstileToken?: string;
+  createdAt: string;
+  updatedAt: string;
+}

@@ -15,6 +15,7 @@ export interface ExtractedTimetable {
     jummah?: { azaanTime?: string; iqamahTime?: string };
   };
   source: "gemini" | "groq" | "tesseract-fallback";
+  storagePath?: string;
 }
 
 /**

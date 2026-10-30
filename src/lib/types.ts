@@ -60,6 +60,7 @@ export interface Masjid {
   calculationMethod: string; // "Karachi", "MWL", "UmmAlQura"
   officialSourceUrl?: string;
   tvDisplayToken?: string;
+  verificationPhotoPath?: string;
   amenities: AmenityList;
   timings: Record<PrayerName, PrayerTimingRecord>;
   jumuahShifts: JumuahShift[];

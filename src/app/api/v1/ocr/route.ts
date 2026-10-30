@@ -3,6 +3,7 @@ import { extractPrayerTimetableWithGemini, ExtractedTimetable } from "@/lib/gemi
 import { extractPrayerTimetableWithGroq } from "@/lib/groq";
 import { parseTimetableFromOCR } from "@/lib/ocr-fallback";
 import { createWorker } from "tesseract.js";
+import { uploadPrivateProofImage } from "@/lib/supabase/storage";
 
 export const maxDuration = 30; // Extend Vercel function timeout if on Pro
 
@@ -49,10 +50,24 @@ export async function POST(req: NextRequest) {
       base64Image = parts[1];
     }
 
+    const imageBuffer = Buffer.from(base64Image, "base64");
+
+    // Optional: Upload to private Supabase Storage for Admin Verification
+    let storagePath: string | undefined;
+    try {
+      const uploadResult = await uploadPrivateProofImage(imageBuffer, mimeType);
+      if (uploadResult?.path) {
+        storagePath = uploadResult.path;
+      }
+    } catch (e) {
+      // Non-blocking fallback if storage is not yet configured
+    }
+
     // 1. Primary Engine: Google Gemini Vision AI (@google/genai)
     if (process.env.GEMINI_API_KEY) {
       try {
         const extracted = await extractPrayerTimetableWithGemini(base64Image, mimeType);
+        if (storagePath) extracted.storagePath = storagePath;
         return NextResponse.json({
           success: true,
           data: extracted,
@@ -68,6 +83,7 @@ export async function POST(req: NextRequest) {
     if (process.env.GROQ_API_KEY) {
       try {
         const extracted = await extractPrayerTimetableWithGroq(base64Image, mimeType);
+        if (storagePath) extracted.storagePath = storagePath;
         return NextResponse.json({
           success: true,
           data: extracted,
@@ -81,7 +97,6 @@ export async function POST(req: NextRequest) {
 
     // 3. Tertiary Engine: Vercel-compatible Tesseract.js fallback
     try {
-      const imageBuffer = Buffer.from(base64Image, "base64");
       const worker = await createWorker("eng");
       const ret = await worker.recognize(imageBuffer);
       await worker.terminate();
@@ -103,6 +118,7 @@ export async function POST(req: NextRequest) {
           jummah: parsedTimes.jummah,
         },
         source: "tesseract-fallback",
+        storagePath,
       };
 
       return NextResponse.json({

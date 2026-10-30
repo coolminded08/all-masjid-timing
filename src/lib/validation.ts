@@ -10,6 +10,7 @@ export const CreateMasjidSchema = z.object({
   country: z.string().min(2, "Country required"),
   address: z.string().optional().default(""),
   category: z.enum(["landmark", "major", "local"]).default("local"),
+  verificationPhotoPath: z.string().optional(),
   amenities: z.object({
     hasLadiesSection: z.boolean().default(false),
     hasWheelchairAccess: z.boolean().default(false),

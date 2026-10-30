@@ -98,6 +98,7 @@ export async function POST(request: NextRequest) {
       country: data.country,
       timezone: "Asia/Kolkata", // Can be resolved via geo-tz
       calculationMethod: "Karachi",
+      verificationPhotoPath: data.verificationPhotoPath || undefined,
       amenities: data.amenities,
       timings: Object.entries(data.timings).reduce((acc, [prayer, timing]) => {
         acc[prayer as any] = {

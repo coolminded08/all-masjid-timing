@@ -53,8 +53,12 @@ export default function AddMasjidPage() {
     distance: number;
   } | null>(null);
   const [scanAppliedBanner, setScanAppliedBanner] = useState<string | null>(null);
+  const [verificationPhotoPath, setVerificationPhotoPath] = useState<string | null>(null);
 
   function handleApplyExtracted(extracted: ExtractedTimetable) {
+    if (extracted.storagePath) {
+      setVerificationPhotoPath(extracted.storagePath);
+    }
     if (extracted.masjidName && !name) {
       setName(extracted.masjidName);
     }
@@ -140,6 +144,7 @@ export default function AddMasjidPage() {
           hasWarmWaterWudu: hasWarmWater,
           hasJanazahService: false,
         },
+        verificationPhotoPath: verificationPhotoPath || undefined,
         timings,
       };
 

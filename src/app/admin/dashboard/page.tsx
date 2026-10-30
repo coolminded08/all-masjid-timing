@@ -28,6 +28,8 @@ import {
   X,
   Save,
   MapPin,
+  Camera,
+  ImageIcon,
 } from "lucide-react";
 import { QuranTutor, Masjid, TutorStatus, MasjidStatus } from "@/lib/types";
 
@@ -85,6 +87,25 @@ export default function AdminDashboardPage() {
   const [editingTutor, setEditingTutor] = useState<QuranTutor | null>(null);
   const [editingMasjid, setEditingMasjid] = useState<Masjid | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
+  const [previewProofUrl, setPreviewProofUrl] = useState<string | null>(null);
+  const [loadingProofId, setLoadingProofId] = useState<string | null>(null);
+
+  async function handleViewProof(path: string, masjidId: string) {
+    setLoadingProofId(masjidId);
+    try {
+      const res = await fetch(`/api/v1/admin/proof-url?path=${encodeURIComponent(path)}`);
+      const data = await res.json();
+      if (data.success && data.signedUrl) {
+        setPreviewProofUrl(data.signedUrl);
+      } else {
+        alert("Could not load photo proof: " + (data.error || "Storage unconfigured"));
+      }
+    } catch (e: any) {
+      alert("Error: " + e.message);
+    } finally {
+      setLoadingProofId(null);
+    }
+  }
 
   // Auth Guard & Data Fetch
   useEffect(() => {
@@ -475,6 +496,22 @@ export default function AdminDashboardPage() {
 
                 {/* Masjid Actions */}
                 <div className="flex items-center gap-2 shrink-0">
+                  {masjid.verificationPhotoPath && (
+                    <button
+                      onClick={() => handleViewProof(masjid.verificationPhotoPath!, masjid.id)}
+                      disabled={loadingProofId === masjid.id}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 font-semibold text-xs transition-colors"
+                      title="View private timetable board photo uploaded during registration"
+                    >
+                      {loadingProofId === masjid.id ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Camera className="w-3.5 h-3.5" />
+                      )}
+                      <span>Photo Proof</span>
+                    </button>
+                  )}
+
                   <button
                     onClick={() => setEditingMasjid({ ...masjid })}
                     className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-xs transition-colors"
@@ -896,6 +933,45 @@ export default function AdminDashboardPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* --- PRIVATE PHOTO PROOF PREVIEW MODAL (ADMIN ONLY) --- */}
+      {previewProofUrl && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 rounded-3xl border border-slate-800 p-5 max-w-xl w-full shadow-2xl relative space-y-3">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-800 text-white">
+              <div className="flex items-center gap-2">
+                <Camera className="w-4 h-4 text-emerald-400" />
+                <span className="font-bold text-xs uppercase tracking-wider text-emerald-300">
+                  Private Timetable Photo Proof (Admin Only)
+                </span>
+              </div>
+              <button onClick={() => setPreviewProofUrl(null)} className="text-slate-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="rounded-xl overflow-hidden bg-black max-h-[70vh] flex items-center justify-center border border-slate-800">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={previewProofUrl}
+                alt="Uploaded Timetable Verification Proof"
+                className="max-h-[65vh] w-auto object-contain"
+              />
+            </div>
+
+            <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1">
+              <span>Securely fetched via Supabase Private Storage Signed URL (1-hour expiry).</span>
+              <button
+                type="button"
+                onClick={() => setPreviewProofUrl(null)}
+                className="px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-semibold"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

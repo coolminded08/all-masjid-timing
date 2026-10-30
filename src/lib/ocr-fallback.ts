@@ -86,14 +86,15 @@ export function normalizePrayerTime(
 
 /**
  * Robust regex rules for identifying prayers across English, Urdu, Arabic, and transliterations.
+ * Avoids ASCII \b word boundary failure on Unicode Urdu/Arabic characters.
  */
 const PRAYER_PATTERNS = {
-  fajr: /\b(fajr|fajar|subh|subah|فجر|صبح)\b/i,
-  dhuhr: /\b(dhuhr|zuhr|zohar|duhr|zuhur|ظهر|ظہر)\b/i,
-  asr: /\b(asr|asar|aser|عصر)\b/i,
-  maghrib: /\b(maghrib|magrib|maghreb|مغرب)\b/i,
-  isha: /\b(isha|esha|ishaa|eishaa|عشاء|عشا)\b/i,
-  jummah: /\b(jummah|juma|jumuah|friday|جمعہ|جمعه)\b/i,
+  fajr: /(?:^|[\s\d:.,/()|-])(?:fajr|fajar|subh|subah|فجر|صبح)(?:$|[\s\d:.,/()|-])/i,
+  dhuhr: /(?:^|[\s\d:.,/()|-])(?:dhuhr|zuhr|zohar|duhr|zuhur|ظهر|ظہر)(?:$|[\s\d:.,/()|-])/i,
+  asr: /(?:^|[\s\d:.,/()|-])(?:asr|asar|aser|عصر)(?:$|[\s\d:.,/()|-])/i,
+  maghrib: /(?:^|[\s\d:.,/()|-])(?:maghrib|magrib|maghreb|مغرب)(?:$|[\s\d:.,/()|-])/i,
+  isha: /(?:^|[\s\d:.,/()|-])(?:isha|esha|ishaa|eishaa|عشاء|عشا)(?:$|[\s\d:.,/()|-])/i,
+  jummah: /(?:^|[\s\d:.,/()|-])(?:jummah|juma|jumuah|friday|جمعہ|جمعه)(?:$|[\s\d:.,/()|-])/i,
 };
 
 const TIME_REGEX = /\b([0-1]?[0-9]|2[0-3])[:.]([0-5][0-9])\b/g;

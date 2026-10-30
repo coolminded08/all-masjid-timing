@@ -13,6 +13,7 @@ import {
   Zap,
 } from "lucide-react";
 import { ExtractedTimetable } from "@/lib/gemini";
+import { compressImageForOCR } from "@/lib/image-compress";
 
 interface TimetableScannerProps {
   onApply: (data: ExtractedTimetable) => void;
@@ -40,14 +41,17 @@ export default function TimetableScanner({ onApply }: TimetableScannerProps) {
     setError(null);
     setResult(null);
     setWarningMessage(null);
+    setScanning(true);
 
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const base64 = reader.result as string;
+    try {
+      // Compress and optimize mobile camera photo down to ~300KB
+      const { base64, mimeType } = await compressImageForOCR(file);
       setImagePreview(base64);
-      await processImage(base64, file.type);
-    };
-    reader.readAsDataURL(file);
+      await processImage(base64, mimeType);
+    } catch (err: any) {
+      setError(err.message || "Failed to prepare image for scanning.");
+      setScanning(false);
+    }
   }
 
   async function processImage(base64: string, mimeType: string) {
@@ -64,7 +68,17 @@ export default function TimetableScanner({ onApply }: TimetableScannerProps) {
         }),
       });
 
-      const json = await res.json();
+      const responseText = await res.text();
+      let json: any = null;
+
+      try {
+        json = JSON.parse(responseText);
+      } catch (parseErr) {
+        if (res.status === 413 || responseText.includes("Too Large")) {
+          throw new Error("Image file is too large for the network. Please choose a smaller photo.");
+        }
+        throw new Error(responseText.slice(0, 150) || `Server error (HTTP ${res.status})`);
+      }
 
       if (!res.ok || !json.success) {
         throw new Error(json.error || json.details || "Failed to analyze image");

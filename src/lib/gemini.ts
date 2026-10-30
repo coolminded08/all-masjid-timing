@@ -41,9 +41,11 @@ TASK:
 1. Extract the name of the Mosque / Masjid if visible.
 2. Extract the locality, city, or area if visible.
 3. Extract the prayer timings for all 5 daily prayers (Fajr, Dhuhr / Zuhr, Asr, Maghrib, Isha) and Friday prayer (Jummah).
+   - Support Urdu & Arabic boards (اوقات نماز): فجر (Fajr), ظہر (Zuhr/Dhuhr), عصر (Asr), مغرب (Maghrib), عشاء (Isha), جمعہ (Jummah).
+   - Ignore secondary reference rows like طلوع آفتاب (Sunrise), غروب آفتاب (Sunset), and صبح صادق (Dawn/Subah Sadiq).
    - Distinguish between Azaan (start time) and Iqamah / Jama'at (congregational prayer time).
-   - If only one time is listed per prayer, assign it to 'iqamahTime'.
-   - Format ALL times strictly in 24-hour HH:mm format (e.g., "05:15", "13:30", "16:45", "17:50", "19:30").
+   - If only one time is listed per prayer (e.g. 5:45 فجر, 1:15 ظہر, 4:55 عصر, 6:35 مغرب, 8:10 عشاء), assign it to 'iqamahTime'.
+   - Format ALL times strictly in 24-hour HH:mm format (e.g., "05:45", "13:15", "16:55", "18:35", "20:10").
    - NEVER confuse afternoon prayers with AM times (e.g., Dhuhr is around 12:xx or 13:xx, Asr is around 15:xx or 16:xx, Maghrib is around 17:xx or 18:xx, Isha is around 19:xx or 20:xx).
 4. Provide a confidence score between 0.0 and 1.0 based on how clear and unambiguous the numbers are.
 5. Provide any brief notes (e.g., schedule date range, "Starts from 1st of Ramadan", etc.).

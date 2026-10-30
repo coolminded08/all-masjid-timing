@@ -98,33 +98,34 @@ export default function HomePage() {
 
   return (
     <div className="space-y-12 pb-20">
-      {/* 3D Immersive Hero Section */}
-      <section className="relative overflow-hidden bg-radial from-emerald-900 via-emerald-950 to-slate-950 text-white py-14 px-4 sm:px-6 lg:px-8 border-b border-emerald-800/60 shadow-2xl">
-        {/* Ambient Glows */}
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-10 right-1/4 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+      {/* 3D Immersive Hero Section with High-Contrast Background */}
+      <section className="relative overflow-hidden bg-slate-950 text-white py-14 px-4 sm:px-6 lg:px-8 border-b border-emerald-900/60 shadow-2xl">
+        {/* Layered Rich Gradient Background */}
+        <div className="absolute inset-0 bg-gradient-to-br from-emerald-950 via-slate-950 to-emerald-950 pointer-events-none" />
+        <div className="absolute top-0 right-1/3 w-[500px] h-[500px] bg-emerald-600/15 rounded-full blur-[100px] pointer-events-none" />
+        <div className="absolute bottom-0 left-10 w-[400px] h-[400px] bg-amber-500/10 rounded-full blur-[90px] pointer-events-none" />
 
         <div className="relative max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
           {/* Left Column: Heading, Value Prop & Search */}
           <div className="lg:col-span-7 space-y-6 text-center lg:text-left">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold bg-emerald-800/60 text-emerald-200 border border-emerald-600/40 backdrop-blur-md shadow-inner">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold bg-emerald-900/90 text-emerald-300 border border-emerald-500/40 backdrop-blur-md shadow-sm">
               <Sparkles className="w-4 h-4 text-amber-400" />
               <span>Next-Gen Community Iqamah Directory</span>
             </div>
 
             <h1 className="text-4xl sm:text-6xl font-black tracking-tight text-white leading-[1.12]">
               Know Exactly When <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 via-teal-200 to-amber-200">
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-teal-300 to-amber-300">
                 The Congregation Stands.
               </span>
             </h1>
 
-            <p className="text-base sm:text-lg text-emerald-100/85 max-w-xl font-normal leading-relaxed">
-              Azaan calls you to prayer; <strong>Iqamah</strong> is when the prayer begins in Jama&apos;ah.
+            <p className="text-base sm:text-lg text-slate-200 max-w-xl font-normal leading-relaxed">
+              Azaan calls you to prayer; <strong className="text-emerald-300 font-semibold">Iqamah</strong> is when the prayer begins in Jama&apos;ah.
               Real-time timings crowdsourced by local worshippers and secured with cryptographic proximity checks.
             </p>
 
-            {/* Glassmorphic Search & Location Box */}
+            {/* Search & Location Bar */}
             <div className="pt-2 max-w-xl flex flex-col sm:flex-row gap-3">
               <div className="relative flex-1">
                 <Search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -133,14 +134,14 @@ export default function HomePage() {
                   placeholder="Search mosque, locality, or city (e.g. Lal Chowk, Makkah)..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3.5 rounded-2xl bg-white/95 text-slate-900 placeholder-slate-400 text-sm font-semibold shadow-lg backdrop-blur-md focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-all"
+                  className="w-full pl-12 pr-4 py-3.5 rounded-2xl bg-white text-slate-900 placeholder-slate-500 text-sm font-semibold shadow-xl focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-all"
                 />
               </div>
 
               <button
                 onClick={handleUseLocation}
                 disabled={locating}
-                className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white text-sm font-bold shadow-lg shadow-emerald-950/40 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-300 min-h-[48px] hover:scale-[1.02] active:scale-[0.98]"
+                className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold shadow-lg shadow-emerald-950/60 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-300 min-h-[48px] hover:scale-[1.02] active:scale-[0.98]"
               >
                 {locating ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -152,16 +153,16 @@ export default function HomePage() {
             </div>
 
             {/* Badges */}
-            <div className="pt-2 flex flex-wrap items-center justify-center lg:justify-start gap-4 text-xs font-semibold text-emerald-200/90">
-              <span className="flex items-center gap-1.5 bg-emerald-950/40 px-3 py-1 rounded-lg border border-emerald-800/40">
+            <div className="pt-2 flex flex-wrap items-center justify-center lg:justify-start gap-4 text-xs font-semibold text-slate-200">
+              <span className="flex items-center gap-1.5 bg-slate-900/80 px-3 py-1.5 rounded-xl border border-slate-700/80 shadow-xs">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                 4-Tier Verification Engine
               </span>
-              <span className="flex items-center gap-1.5 bg-emerald-950/40 px-3 py-1 rounded-lg border border-emerald-800/40">
+              <span className="flex items-center gap-1.5 bg-slate-900/80 px-3 py-1.5 rounded-xl border border-slate-700/80 shadow-xs">
                 <ShieldCheck className="w-4 h-4 text-emerald-400" />
                 500m GPS Proximity Proof
               </span>
-              <span className="flex items-center gap-1.5 bg-emerald-950/40 px-3 py-1 rounded-lg border border-emerald-800/40">
+              <span className="flex items-center gap-1.5 bg-slate-900/80 px-3 py-1.5 rounded-xl border border-slate-700/80 shadow-xs">
                 <Code2 className="w-4 h-4 text-emerald-400" />
                 Free Open Data API
               </span>
@@ -170,7 +171,7 @@ export default function HomePage() {
 
           {/* Right Column: 3D Interactive Kaaba & Celestial Orbital Ring */}
           <div className="lg:col-span-5 flex flex-col items-center justify-center">
-            <div className="relative w-full max-w-[420px] aspect-square rounded-3xl bg-emerald-950/30 border border-emerald-500/20 backdrop-blur-xl shadow-2xl p-2 flex items-center justify-center overflow-hidden">
+            <div className="relative w-full max-w-[420px] aspect-square rounded-3xl bg-slate-900/90 border border-emerald-500/30 backdrop-blur-xl shadow-2xl p-2 flex items-center justify-center overflow-hidden">
               <Mosque3DViewer />
             </div>
           </div>

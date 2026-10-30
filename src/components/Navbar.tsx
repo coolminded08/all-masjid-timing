@@ -18,6 +18,7 @@ import {
   Sparkles,
   ChevronDown,
   BookOpen,
+  Mic,
 } from "lucide-react";
 
 export default function Navbar() {
@@ -113,6 +114,18 @@ export default function Navbar() {
             >
               <BookOpen className="w-4 h-4 text-emerald-600" />
               <span>Quran Tutors</span>
+            </Link>
+
+            <Link
+              href="/jummah"
+              className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${
+                pathname.startsWith("/jummah")
+                  ? "bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold"
+                  : "hover:text-emerald-700 hover:bg-slate-50"
+              }`}
+            >
+              <Mic className="w-4 h-4 text-emerald-600" />
+              <span>Jummah Bayans</span>
             </Link>
 
             {/* Dropdown for Secondary Tools to prevent navbar squish */}
@@ -243,6 +256,14 @@ export default function Navbar() {
           >
             <BookOpen className="w-4 h-4 text-emerald-600" />
             Quran Tutors Directory
+          </Link>
+          <Link
+            href="/jummah"
+            onClick={() => setMobileMenuOpen(false)}
+            className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl font-semibold text-sm text-slate-800 dark:text-slate-200 hover:bg-emerald-50"
+          >
+            <Mic className="w-4 h-4 text-emerald-600" />
+            Jummah Khutbah &amp; Bayan
           </Link>
           <Link
             href="/ramadan"

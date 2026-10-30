@@ -8,6 +8,9 @@ import {
   TutorGender,
   TutorTeachingMode,
   QuranSubject,
+  JummahSermon,
+  JummahLanguage,
+  JummahStatus,
 } from "./types";
 import { calculateDistanceMeters, isWithinProximityRadius } from "./geo";
 
@@ -595,5 +598,268 @@ export function deleteQuranTutor(id: string): boolean {
   const index = tutorsStore.findIndex((t) => t.id === id || t.slug === id);
   if (index === -1) return false;
   tutorsStore[index].status = "deleted";
+  return true;
+}
+
+// -------------------------------------------------------------
+// Jummah Khutbah & Bayan Directory Store
+// -------------------------------------------------------------
+export interface JummahFilters {
+  city?: string;
+  language?: JummahLanguage;
+  query?: string;
+  hasLivestream?: boolean;
+}
+
+let jummahStore: JummahSermon[] = [
+  {
+    id: "jummah-1",
+    slug: "mufti-taqi-usmani-darul-uloom-karachi",
+    masjidName: "Jamia Darul Uloom Mosque",
+    locality: "Korangi Industrial Area",
+    city: "Karachi",
+    state: "Sindh",
+    country: "Pakistan",
+    address: "Korangi Creek Road, Karachi",
+    khateebName: "Justice (R) Mufti Muhammad Taqi Usmani",
+    khateebTitle: "Mufti",
+    khateebBio: "Leading global Islamic jurist, former Shariat Appellate Bench Judge of Supreme Court of Pakistan, and VP of Darul Uloom Karachi.",
+    topic: "Islamic Ethics in Modern Commerce & Family Harmony",
+    description: "Detailed pre-Khutbah Urdu lecture addressing practical contemporary financial and household ethics followed by Sunnah Arabic Khutbah and congregational prayer.",
+    language: "urdu",
+    secondaryLanguage: "Arabic",
+    bayanTime: "12:45",
+    khutbahTime: "13:30",
+    jamatTime: "13:45",
+    livestreamUrl: "https://www.youtube.com/@DarulUloomKarachiOfficial/live",
+    isWeeklyRecurring: true,
+    isLiveNow: false,
+    status: "active",
+    contactNumber: "+92 21 35049774",
+    createdAt: "2026-01-01T00:00:00Z",
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: "jummah-2",
+    slug: "maulana-tariq-jamil-jamia-masjid-lahore",
+    masjidName: "Jamia Masjid Al-Noor",
+    locality: "Model Town",
+    city: "Lahore",
+    state: "Punjab",
+    country: "Pakistan",
+    address: "Model Town Extension, Lahore",
+    khateebName: "Maulana Tariq Jamil",
+    khateebTitle: "Maulana",
+    khateebBio: "Renowned Islamic scholar, orator, and international peace promoter known for character reformation and spirituality.",
+    topic: "Character Building, Akhlaq & Sincere Repentance (Tawbah)",
+    description: "Heartfelt pre-Jummah Bayan in Urdu focused on reviving Sunnah ethics, youth guidance, and community bonding.",
+    language: "urdu",
+    bayanTime: "12:30",
+    khutbahTime: "13:15",
+    jamatTime: "13:30",
+    livestreamUrl: "https://www.youtube.com/@TariqJamilOfficial/live",
+    recordingUrl: "https://www.youtube.com/@TariqJamilOfficial",
+    isWeeklyRecurring: true,
+    isLiveNow: false,
+    status: "active",
+    contactNumber: "+92 42 35882200",
+    createdAt: "2026-01-01T00:00:00Z",
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: "jummah-3",
+    slug: "dr-israr-ahmed-legacy-quran-academy-lahore",
+    masjidName: "Quran Academy Masjid",
+    locality: "Model Town Block D",
+    city: "Lahore",
+    state: "Punjab",
+    country: "Pakistan",
+    address: "36-K Model Town, Lahore",
+    khateebName: "Dr. Hafiz Aaqib Saeed (Tanzeem-e-Islami)",
+    khateebTitle: "Dr.",
+    khateebBio: "Senior researcher and commentator at Quran Academy Lahore, continuing the legacy of Dr. Israr Ahmed.",
+    topic: "The Quranic Blueprint for Social Justice and Taqwa",
+    description: "Systematic Quranic exegesis (Tafseer) lecture before Friday prayers with deep socio-political analysis in light of Surah Al-Kahf.",
+    language: "urdu",
+    secondaryLanguage: "English",
+    bayanTime: "12:40",
+    khutbahTime: "13:20",
+    jamatTime: "13:35",
+    livestreamUrl: "https://www.youtube.com/@TanzeemOrgOfficial/live",
+    isWeeklyRecurring: true,
+    isLiveNow: false,
+    status: "active",
+    createdAt: "2026-01-01T00:00:00Z",
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: "jummah-4",
+    slug: "sheikh-abdur-rahman-as-sudais-masjid-al-haram",
+    masjidName: "Masjid al-Haram",
+    locality: "Al Haram",
+    city: "Makkah",
+    country: "Saudi Arabia",
+    address: "King Abdulaziz Gate, Makkah",
+    khateebName: "Sheikh Dr. Abdur-Rahman As-Sudais",
+    khateebTitle: "Sheikh Dr.",
+    khateebBio: "Chief of the General Presidency for the Affairs of the Two Holy Mosques and senior Imam/Khateeb of the Grand Mosque in Makkah.",
+    topic: "Unity of the Ummah, Global Peace, and Gratitude to Allah",
+    description: "Official Friday Khutbah delivered from the Holy Kaaba with live simultaneous audio translation into English, Urdu, French, and Malay.",
+    language: "arabic",
+    secondaryLanguage: "English & Urdu Translation",
+    bayanTime: "12:15",
+    khutbahTime: "12:20",
+    jamatTime: "12:40",
+    livestreamUrl: "https://www.youtube.com/@Haramaininfo/live",
+    audioOnlyUrl: "https://gph.gov.sa/live",
+    isWeeklyRecurring: true,
+    isLiveNow: true,
+    status: "active",
+    createdAt: "2026-01-01T00:00:00Z",
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: "jummah-5",
+    slug: "mirwaiz-umar-farooq-historical-jamia-masjid-srinagar",
+    masjidName: "Historical Jamia Masjid Srinagar",
+    locality: "Nowhatta, Downtown",
+    city: "Srinagar",
+    state: "Jammu & Kashmir",
+    country: "India",
+    address: "Nowhatta Chowk, Srinagar, Kashmir 190001",
+    khateebName: "Mirwaiz Umar Farooq",
+    khateebTitle: "Mirwaiz",
+    khateebBio: "Head preacher and Mirwaiz of Kashmir at the 600-year-old architectural marvel Jamia Masjid Srinagar.",
+    topic: "Social Responsibility, Youth Upliftment, and Islamic Heritage of Kashmir",
+    description: "Traditional Friday sermon delivered in Urdu and Kashmiri to thousands of worshippers in the historic cedar-pillared courtyard.",
+    language: "urdu",
+    secondaryLanguage: "Kashmiri",
+    bayanTime: "12:30",
+    khutbahTime: "13:15",
+    jamatTime: "13:30",
+    isWeeklyRecurring: true,
+    status: "active",
+    contactNumber: "+91 194 2451000",
+    createdAt: "2026-01-01T00:00:00Z",
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: "jummah-6",
+    slug: "mufti-ismail-menk-global-friday-khutbah",
+    masjidName: "National Central Mosque",
+    locality: "Capital District",
+    city: "Islamabad",
+    state: "ICT",
+    country: "Pakistan",
+    address: "Faisal Avenue, Sector E-7, Islamabad",
+    khateebName: "Mufti Ismail Menk",
+    khateebTitle: "Mufti",
+    khateebBio: "Internationally renowned Zimbabwean Islamic scholar known worldwide for his relatable, uplifting, and motivational lectures.",
+    topic: "Dealing with Anxiety, Mental Health & Trusting Allah's Plan",
+    description: "Special English Jummah lecture tailored for youth, university students, and professionals navigating modern stress.",
+    language: "english",
+    bayanTime: "12:45",
+    khutbahTime: "13:30",
+    jamatTime: "13:45",
+    livestreamUrl: "https://www.youtube.com/@MuftimenkOfficial/live",
+    isWeeklyRecurring: false,
+    specialDate: "2026-11-06",
+    status: "active",
+    createdAt: "2026-01-01T00:00:00Z",
+    updatedAt: new Date().toISOString(),
+  },
+];
+
+export function getJummahSermons(filters: JummahFilters = {}): JummahSermon[] {
+  let list = jummahStore.filter((s) => s.status === "active");
+
+  if (filters.city) {
+    const cityLower = filters.city.toLowerCase().trim();
+    list = list.filter((s) => s.city.toLowerCase().includes(cityLower));
+  }
+
+  if (filters.language) {
+    list = list.filter((s) => s.language === filters.language);
+  }
+
+  if (filters.hasLivestream) {
+    list = list.filter((s) => Boolean(s.livestreamUrl || s.audioOnlyUrl));
+  }
+
+  if (filters.query) {
+    const q = filters.query.toLowerCase().trim();
+    list = list.filter(
+      (s) =>
+        s.khateebName.toLowerCase().includes(q) ||
+        s.khateebTitle.toLowerCase().includes(q) ||
+        s.masjidName.toLowerCase().includes(q) ||
+        s.topic.toLowerCase().includes(q) ||
+        s.city.toLowerCase().includes(q) ||
+        (s.locality && s.locality.toLowerCase().includes(q)) ||
+        (s.description && s.description.toLowerCase().includes(q))
+    );
+  }
+
+  return list;
+}
+
+export function getJummahSermonBySlugOrId(idOrSlug: string): JummahSermon | null {
+  return (
+    jummahStore.find(
+      (s) => s.id === idOrSlug || s.slug.toLowerCase() === idOrSlug.toLowerCase()
+    ) || null
+  );
+}
+
+export function addJummahSermon(
+  data: Omit<JummahSermon, "id" | "slug" | "createdAt" | "updatedAt">
+): JummahSermon {
+  const baseSlug = `${data.khateebName}-${data.masjidName}`
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+  const slug = `${baseSlug}-${Math.random().toString(36).substring(2, 6)}`;
+
+  const newSermon: JummahSermon = {
+    ...data,
+    id: `jummah-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+    slug,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  jummahStore.unshift(newSermon);
+  return newSermon;
+}
+
+export function getAllJummahSermonsForAdmin(): JummahSermon[] {
+  return jummahStore.filter((s) => s.status !== "deleted");
+}
+
+export function updateJummahSermon(
+  id: string,
+  updates: Partial<JummahSermon>
+): JummahSermon | null {
+  const index = jummahStore.findIndex((s) => s.id === id || s.slug === id);
+  if (index === -1) return null;
+  jummahStore[index] = {
+    ...jummahStore[index],
+    ...updates,
+    updatedAt: new Date().toISOString(),
+  };
+  return jummahStore[index];
+}
+
+export function setJummahSermonStatus(
+  id: string,
+  status: JummahStatus
+): JummahSermon | null {
+  return updateJummahSermon(id, { status });
+}
+
+export function deleteJummahSermon(id: string): boolean {
+  const index = jummahStore.findIndex((s) => s.id === id || s.slug === id);
+  if (index === -1) return false;
+  jummahStore[index].status = "deleted";
   return true;
 }

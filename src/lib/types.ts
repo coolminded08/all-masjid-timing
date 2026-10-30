@@ -90,6 +90,53 @@ export interface VotePayload {
   turnstileToken?: string;
 }
 
+// Jummah Khutbah & Bayan Directory Types
+export type JummahLanguage =
+  | "urdu"
+  | "english"
+  | "arabic"
+  | "pashto"
+  | "punjabi"
+  | "sindhi"
+  | "kashmiri"
+  | "bengali"
+  | "other";
+
+export type JummahStatus = "active" | "on_hold" | "deleted";
+
+export interface JummahSermon {
+  id: string;
+  slug: string;
+  masjidId?: string;
+  masjidName: string;
+  locality: string;
+  city: string;
+  state?: string;
+  country: string;
+  address?: string;
+  khateebName: string;
+  khateebTitle: string; // e.g., "Mufti", "Maulana", "Dr.", "Sheikh", "Qari"
+  khateebBio?: string;
+  topic: string;
+  description?: string;
+  language: JummahLanguage;
+  secondaryLanguage?: string;
+  bayanTime: string; // "12:45"
+  khutbahTime: string; // "13:30"
+  jamatTime: string; // "13:45"
+  livestreamUrl?: string; // YouTube Live, Facebook Live, Mixlr
+  recordingUrl?: string;
+  audioOnlyUrl?: string;
+  isWeeklyRecurring: boolean;
+  specialDate?: string;
+  isLiveNow?: boolean;
+  status: JummahStatus;
+  contactNumber?: string;
+  turnstileToken?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // Quran Tutor Directory Types
 export type TutorGender = "male" | "female";
 export type TutorTeachingMode = "online" | "in-person" | "both";

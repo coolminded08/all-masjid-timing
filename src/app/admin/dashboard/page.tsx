@@ -30,8 +30,10 @@ import {
   MapPin,
   Camera,
   ImageIcon,
+  Mic,
+  Radio,
 } from "lucide-react";
-import { QuranTutor, Masjid, TutorStatus, MasjidStatus } from "@/lib/types";
+import { QuranTutor, Masjid, TutorStatus, MasjidStatus, JummahSermon, JummahStatus } from "@/lib/types";
 
 interface PendingProposal {
   id: string;
@@ -48,7 +50,7 @@ export default function AdminDashboardPage() {
   const router = useRouter();
 
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"masjids" | "tutors" | "proposals" | "system">("masjids");
+  const [activeTab, setActiveTab] = useState<"masjids" | "tutors" | "jummah" | "proposals" | "system">("masjids");
   const [toast, setToast] = useState<string | null>(null);
   const [adminUser, setAdminUser] = useState<{
     email?: string;
@@ -60,6 +62,7 @@ export default function AdminDashboardPage() {
   // Data Stores
   const [masjids, setMasjids] = useState<Masjid[]>([]);
   const [tutors, setTutors] = useState<QuranTutor[]>([]);
+  const [sermons, setSermons] = useState<JummahSermon[]>([]);
   const [proposals, setProposals] = useState<PendingProposal[]>([
     {
       id: "prop-1",
@@ -86,6 +89,7 @@ export default function AdminDashboardPage() {
   // Edit Modals State
   const [editingTutor, setEditingTutor] = useState<QuranTutor | null>(null);
   const [editingMasjid, setEditingMasjid] = useState<Masjid | null>(null);
+  const [editingSermon, setEditingSermon] = useState<JummahSermon | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
   const [previewProofUrl, setPreviewProofUrl] = useState<string | null>(null);
   const [loadingProofId, setLoadingProofId] = useState<string | null>(null);
@@ -131,6 +135,13 @@ export default function AdminDashboardPage() {
         const tutorsData = await tutorsRes.json();
         if (tutorsData.success) {
           setTutors(tutorsData.data);
+        }
+
+        // 3. Fetch Jummah Sermons
+        const jummahRes = await fetch("/api/v1/admin/jummah");
+        const jummahData = await jummahRes.json();
+        if (jummahData.success) {
+          setSermons(jummahData.data);
         }
       } catch (err) {
         router.replace("/admin/login");
@@ -281,6 +292,71 @@ export default function AdminDashboardPage() {
     }
   }
 
+  // --- JUMMAH SERMON ADMIN ACTIONS ---
+  async function handleToggleSermonStatus(sermon: JummahSermon) {
+    const newStatus: JummahStatus = sermon.status === "on_hold" ? "active" : "on_hold";
+    try {
+      const res = await fetch(`/api/v1/admin/jummah/${sermon.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "set_status", status: newStatus }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSermons(sermons.map((s) => (s.id === sermon.id ? { ...s, status: newStatus } : s)));
+        showToast(
+          newStatus === "on_hold"
+            ? `Friday Sermon "${sermon.topic}" placed ON HOLD (hidden from public).`
+            : `Friday Sermon "${sermon.topic}" is now ACTIVE.`
+        );
+      }
+    } catch (e: any) {
+      alert("Error: " + e.message);
+    }
+  }
+
+  async function handleDeleteSermon(sermon: JummahSermon) {
+    if (!confirm(`Are you sure you want to delete sermon "${sermon.topic}" by ${sermon.khateebName}?`)) {
+      return;
+    }
+    try {
+      const res = await fetch(`/api/v1/admin/jummah/${sermon.id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (data.success) {
+        setSermons(sermons.filter((s) => s.id !== sermon.id));
+        showToast(`Friday Sermon deleted.`);
+      }
+    } catch (e: any) {
+      alert("Error: " + e.message);
+    }
+  }
+
+  async function handleSaveSermonEdit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingSermon) return;
+    setSavingEdit(true);
+
+    try {
+      const res = await fetch(`/api/v1/admin/jummah/${editingSermon.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editingSermon),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSermons(sermons.map((s) => (s.id === editingSermon.id ? editingSermon : s)));
+        setEditingSermon(null);
+        showToast(`Friday Sermon updated successfully.`);
+      } else {
+        alert(data.error || "Failed to update sermon");
+      }
+    } catch (e: any) {
+      alert("Error: " + e.message);
+    } finally {
+      setSavingEdit(false);
+    }
+  }
+
   // --- PROPOSALS ACTIONS ---
   function handleApproveProposal(id: string) {
     setProposals(proposals.filter((p) => p.id !== id));
@@ -354,7 +430,7 @@ export default function AdminDashboardPage() {
       )}
 
       {/* Metrics Row */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
         <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
             Total Masjids
@@ -377,19 +453,29 @@ export default function AdminDashboardPage() {
 
         <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+            Jummah Sermons
+          </span>
+          <div className="text-2xl font-black text-purple-600">{sermons.length}</div>
+          <span className="text-[11px] text-slate-400 mt-0.5 block">
+            {sermons.filter((s) => s.status === "on_hold").length} on hold
+          </span>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
             Timing Proposals
           </span>
           <div className="text-2xl font-black text-amber-600">{proposals.length}</div>
           <span className="text-[11px] text-slate-400 mt-0.5 block">Community suggestions</span>
         </div>
 
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
+        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs col-span-2 sm:col-span-1">
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
             Security Status
           </span>
           <div className="text-sm font-bold text-emerald-600 flex items-center gap-1.5 mt-1">
             <ShieldCheck className="w-4 h-4" />
-            Active &bull; Turnstile + Auth
+            Turnstile Active
           </div>
           <span className="text-[11px] text-slate-400 mt-0.5 block">Zero-Spam Enforced</span>
         </div>
@@ -419,6 +505,18 @@ export default function AdminDashboardPage() {
         >
           <BookOpen className="w-4 h-4" />
           Quran Tutors ({tutors.length})
+        </button>
+
+        <button
+          onClick={() => setActiveTab("jummah")}
+          className={`pb-3 px-4 transition-all flex items-center gap-1.5 shrink-0 ${
+            activeTab === "jummah"
+              ? "border-b-2 border-emerald-600 text-emerald-700 dark:text-emerald-400"
+              : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+          }`}
+        >
+          <Mic className="w-4 h-4" />
+          Jummah Bayans ({sermons.length})
         </button>
 
         <button
@@ -628,6 +726,116 @@ export default function AdminDashboardPage() {
                     onClick={() => handleDeleteTutor(tutor)}
                     className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-red-50 dark:hover:bg-red-950 text-red-500 transition-colors"
                     title="Delete Tutor"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Tab 2.5: Jummah Khutbah & Bayan Moderation */}
+      {activeTab === "jummah" && (
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
+            <div>
+              <h3 className="font-bold text-sm text-slate-800 dark:text-slate-200">
+                Friday Khutbah &amp; Bayan Management
+              </h3>
+              <p className="text-xs text-slate-400">
+                Edit speaker details, Bayan/Khutbah times, live stream URLs, or toggle on-hold status.
+              </p>
+            </div>
+            <Link
+              href="/jummah/add"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-xs self-start sm:self-auto"
+            >
+              <Mic className="w-3.5 h-3.5" />
+              Add Friday Sermon
+            </Link>
+          </div>
+
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800 shadow-xs">
+            {sermons.map((sermon) => (
+              <div
+                key={sermon.id}
+                className={`p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-colors ${
+                  sermon.status === "on_hold" ? "bg-amber-50/40 dark:bg-amber-950/20" : ""
+                }`}
+              >
+                <div className="space-y-1.5 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-bold text-sm text-slate-900 dark:text-white">
+                      {sermon.khateebTitle} {sermon.khateebName}
+                    </span>
+                    <span className="text-xs text-slate-400">&bull;</span>
+                    <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+                      {sermon.masjidName} ({sermon.city})
+                    </span>
+
+                    {sermon.status === "on_hold" && (
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-200 text-amber-900 dark:bg-amber-900 dark:text-amber-200 uppercase">
+                        ON HOLD
+                      </span>
+                    )}
+
+                    {sermon.livestreamUrl && (
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 flex items-center gap-1">
+                        <Radio className="w-3 h-3 text-rose-600 animate-pulse" /> Live
+                      </span>
+                    )}
+                  </div>
+
+                  <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Topic: {sermon.topic}
+                  </p>
+
+                  <div className="text-[11px] text-slate-400 flex items-center gap-3 font-mono">
+                    <span>Bayan: <strong className="text-emerald-600">{sermon.bayanTime}</strong></span>
+                    <span>&bull;</span>
+                    <span>Khutbah: <strong className="text-slate-600 dark:text-slate-300">{sermon.khutbahTime}</strong></span>
+                    <span>&bull;</span>
+                    <span>Jama&apos;at: <strong className="text-emerald-700 font-bold">{sermon.jamatTime}</strong></span>
+                    <span>&bull;</span>
+                    <span className="capitalize">{sermon.language}</span>
+                  </div>
+                </div>
+
+                {/* Sermon Actions */}
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => setEditingSermon({ ...sermon })}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-xs transition-colors"
+                  >
+                    <Edit className="w-3.5 h-3.5" />
+                    Edit
+                  </button>
+
+                  <button
+                    onClick={() => handleToggleSermonStatus(sermon)}
+                    className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg font-bold text-xs transition-all ${
+                      sermon.status === "on_hold"
+                        ? "bg-emerald-600 hover:bg-emerald-500 text-white"
+                        : "bg-amber-100 hover:bg-amber-200 text-amber-900 dark:bg-amber-950 dark:text-amber-300"
+                    }`}
+                  >
+                    {sermon.status === "on_hold" ? (
+                      <>
+                        <PlayCircle className="w-3.5 h-3.5" /> Make Live
+                      </>
+                    ) : (
+                      <>
+                        <PauseCircle className="w-3.5 h-3.5" /> Put On Hold
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => handleDeleteSermon(sermon)}
+                    className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-red-50 dark:hover:bg-red-950 text-red-500 transition-colors"
+                    title="Delete Sermon"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -930,6 +1138,144 @@ export default function AdminDashboardPage() {
                 >
                   {savingEdit ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                   Save Masjid &amp; Timings
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* --- EDIT JUMMAH SERMON MODAL --- */}
+      {editingSermon && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 max-w-xl w-full shadow-2xl relative space-y-4 my-8">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <h3 className="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
+                <Edit className="w-4 h-4 text-emerald-600" />
+                Edit Friday Sermon: {editingSermon.topic}
+              </h3>
+              <button onClick={() => setEditingSermon(null)} className="text-slate-400 hover:text-slate-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveSermonEdit} className="space-y-4 text-xs">
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Honorific / Title</label>
+                  <input
+                    type="text"
+                    required
+                    value={editingSermon.khateebTitle}
+                    onChange={(e) => setEditingSermon({ ...editingSermon, khateebTitle: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 dark:bg-slate-800"
+                  />
+                </div>
+                <div className="col-span-2">
+                  <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Speaker Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={editingSermon.khateebName}
+                    onChange={(e) => setEditingSermon({ ...editingSermon, khateebName: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 dark:bg-slate-800"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Speech Topic</label>
+                <input
+                  type="text"
+                  required
+                  value={editingSermon.topic}
+                  onChange={(e) => setEditingSermon({ ...editingSermon, topic: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 dark:bg-slate-800"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Masjid Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={editingSermon.masjidName}
+                    onChange={(e) => setEditingSermon({ ...editingSermon, masjidName: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 dark:bg-slate-800"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">City</label>
+                  <input
+                    type="text"
+                    required
+                    value={editingSermon.city}
+                    onChange={(e) => setEditingSermon({ ...editingSermon, city: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 dark:bg-slate-800"
+                  />
+                </div>
+              </div>
+
+              {/* 3 Times */}
+              <div className="grid grid-cols-3 gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Bayan Time</label>
+                  <input
+                    type="text"
+                    required
+                    value={editingSermon.bayanTime}
+                    onChange={(e) => setEditingSermon({ ...editingSermon, bayanTime: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 dark:bg-slate-800 font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Khutbah Time</label>
+                  <input
+                    type="text"
+                    required
+                    value={editingSermon.khutbahTime}
+                    onChange={(e) => setEditingSermon({ ...editingSermon, khutbahTime: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 dark:bg-slate-800 font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-emerald-700 dark:text-emerald-400 block mb-1">Jama&apos;at Time</label>
+                  <input
+                    type="text"
+                    required
+                    value={editingSermon.jamatTime}
+                    onChange={(e) => setEditingSermon({ ...editingSermon, jamatTime: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-emerald-500 dark:border-emerald-500 dark:bg-slate-800 font-mono font-bold"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Live Stream / Recording URL</label>
+                <input
+                  type="url"
+                  value={editingSermon.livestreamUrl || ""}
+                  onChange={(e) => setEditingSermon({ ...editingSermon, livestreamUrl: e.target.value })}
+                  placeholder="https://www.youtube.com/@Channel/live"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 dark:bg-slate-800"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setEditingSermon(null)}
+                  className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 font-semibold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingEdit}
+                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+                >
+                  Save Sermon
                 </button>
               </div>
             </form>

@@ -2,7 +2,7 @@ export type PrayerName = "fajr" | "dhuhr" | "asr" | "maghrib" | "isha" | "jumuah
 
 export type MasjidCategory = "landmark" | "major" | "local";
 
-export type MasjidStatus = "unverified" | "confirmed" | "verified";
+export type MasjidStatus = "unverified" | "confirmed" | "verified" | "on_hold" | "deleted";
 
 export type SourceTier = 1 | 2 | 3 | 4;
 
@@ -107,6 +107,8 @@ export type TutorAudience =
   | "adult-brothers"
   | "adult-sisters";
 
+export type TutorStatus = "active" | "on_hold" | "deleted";
+
 export interface QuranTutor {
   id: string;
   slug: string;
@@ -117,6 +119,7 @@ export interface QuranTutor {
   photoUrl?: string;
   isVerified: boolean;
   hasIjazah: boolean;
+  status?: TutorStatus;
   subjects: QuranSubject[];
   teachingMode: TutorTeachingMode;
   targetAudience: TutorAudience[];

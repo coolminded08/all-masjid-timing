@@ -22,8 +22,14 @@ import {
   Zap,
   Loader2,
   Trash2,
+  PauseCircle,
+  PlayCircle,
+  Edit,
+  X,
+  Save,
+  MapPin,
 } from "lucide-react";
-import { QuranTutor } from "@/lib/types";
+import { QuranTutor, Masjid, TutorStatus, MasjidStatus } from "@/lib/types";
 
 interface PendingProposal {
   id: string;
@@ -36,21 +42,11 @@ interface PendingProposal {
   submittedAt: string;
 }
 
-interface UnverifiedMasjidItem {
-  id: string;
-  name: string;
-  locality: string;
-  district: string;
-  submittedBy: string;
-  gpsAccuracy: string;
-  submittedAt: string;
-}
-
 export default function AdminDashboardPage() {
   const router = useRouter();
 
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"proposals" | "masjids" | "tutors" | "system">("proposals");
+  const [activeTab, setActiveTab] = useState<"masjids" | "tutors" | "proposals" | "system">("masjids");
   const [toast, setToast] = useState<string | null>(null);
   const [adminUser, setAdminUser] = useState<{
     email?: string;
@@ -59,7 +55,9 @@ export default function AdminDashboardPage() {
     provider?: string;
   } | null>(null);
 
-  // Queues
+  // Data Stores
+  const [masjids, setMasjids] = useState<Masjid[]>([]);
+  const [tutors, setTutors] = useState<QuranTutor[]>([]);
   const [proposals, setProposals] = useState<PendingProposal[]>([
     {
       id: "prop-1",
@@ -83,44 +81,32 @@ export default function AdminDashboardPage() {
     },
   ]);
 
-  const [unverifiedMasjids, setUnverifiedMasjids] = useState<UnverifiedMasjidItem[]>([
-    {
-      id: "m-unv-1",
-      name: "Masjid Noor (Soura)",
-      locality: "Soura",
-      district: "Srinagar",
-      submittedBy: "Community Worshipper",
-      gpsAccuracy: "±8m (High Precision)",
-      submittedAt: "1 hour ago",
-    },
-    {
-      id: "m-unv-2",
-      name: "Markaz Masjid (Nowhatta)",
-      locality: "Nowhatta",
-      district: "Srinagar",
-      submittedBy: "Local Resident",
-      gpsAccuracy: "±14m (Good)",
-      submittedAt: "3 hours ago",
-    },
-  ]);
+  // Edit Modals State
+  const [editingTutor, setEditingTutor] = useState<QuranTutor | null>(null);
+  const [editingMasjid, setEditingMasjid] = useState<Masjid | null>(null);
+  const [savingEdit, setSavingEdit] = useState(false);
 
-  const [tutors, setTutors] = useState<QuranTutor[]>([]);
-
-  // Auth Guard
+  // Auth Guard & Data Fetch
   useEffect(() => {
-    async function verifyAuth() {
+    async function loadAdminData() {
       try {
-        const res = await fetch("/api/v1/admin/me");
-        const data = await res.json();
-        if (!data.authenticated) {
+        const authRes = await fetch("/api/v1/admin/me");
+        const authData = await authRes.json();
+        if (!authData.authenticated) {
           router.replace("/admin/login");
           return;
         }
+        setAdminUser(authData.user);
 
-        setAdminUser(data.user);
+        // 1. Fetch Masjids
+        const masjidsRes = await fetch("/api/v1/admin/masjids");
+        const masjidsData = await masjidsRes.json();
+        if (masjidsData.success) {
+          setMasjids(masjidsData.data);
+        }
 
-        // Fetch tutors for moderation
-        const tutorsRes = await fetch("/api/v1/tutors");
+        // 2. Fetch Tutors
+        const tutorsRes = await fetch("/api/v1/admin/tutors");
         const tutorsData = await tutorsRes.json();
         if (tutorsData.success) {
           setTutors(tutorsData.data);
@@ -131,7 +117,7 @@ export default function AdminDashboardPage() {
         setLoading(false);
       }
     }
-    verifyAuth();
+    loadAdminData();
   }, [router]);
 
   async function handleLogout() {
@@ -141,9 +127,140 @@ export default function AdminDashboardPage() {
 
   function showToast(msg: string) {
     setToast(msg);
-    setTimeout(() => setToast(null), 3000);
+    setTimeout(() => setToast(null), 3500);
   }
 
+  // --- TUTOR ADMIN ACTIONS ---
+  async function handleToggleTutorStatus(tutor: QuranTutor) {
+    const newStatus: TutorStatus = tutor.status === "on_hold" ? "active" : "on_hold";
+    try {
+      const res = await fetch(`/api/v1/admin/tutors/${tutor.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setTutors(tutors.map((t) => (t.id === tutor.id ? { ...t, status: newStatus } : t)));
+        showToast(
+          newStatus === "on_hold"
+            ? `Tutor "${tutor.name}" placed ON HOLD (hidden from public directory).`
+            : `Tutor "${tutor.name}" is now ACTIVE & PUBLIC.`
+        );
+      }
+    } catch (e: any) {
+      alert("Error: " + e.message);
+    }
+  }
+
+  async function handleDeleteTutor(tutor: QuranTutor) {
+    if (!confirm(`Are you sure you want to delete tutor "${tutor.name}"? This will remove them from the platform.`)) {
+      return;
+    }
+    try {
+      const res = await fetch(`/api/v1/admin/tutors/${tutor.id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (data.success) {
+        setTutors(tutors.filter((t) => t.id !== tutor.id));
+        showToast(`Tutor "${tutor.name}" deleted successfully.`);
+      }
+    } catch (e: any) {
+      alert("Error: " + e.message);
+    }
+  }
+
+  async function handleSaveTutorEdit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingTutor) return;
+    setSavingEdit(true);
+
+    try {
+      const res = await fetch(`/api/v1/admin/tutors/${editingTutor.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editingTutor),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setTutors(tutors.map((t) => (t.id === editingTutor.id ? editingTutor : t)));
+        setEditingTutor(null);
+        showToast(`Tutor "${editingTutor.name}" updated successfully.`);
+      } else {
+        alert(data.error || "Failed to update tutor");
+      }
+    } catch (e: any) {
+      alert("Error: " + e.message);
+    } finally {
+      setSavingEdit(false);
+    }
+  }
+
+  // --- MASJID ADMIN ACTIONS ---
+  async function handleToggleMasjidStatus(masjid: Masjid) {
+    const newStatus: MasjidStatus = masjid.status === "on_hold" ? "verified" : "on_hold";
+    try {
+      const res = await fetch(`/api/v1/admin/masjids/${masjid.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setMasjids(masjids.map((m) => (m.id === masjid.id ? { ...m, status: newStatus } : m)));
+        showToast(
+          newStatus === "on_hold"
+            ? `Masjid "${masjid.name}" placed ON HOLD (hidden from map and directory).`
+            : `Masjid "${masjid.name}" is now ACTIVE & VERIFIED.`
+        );
+      }
+    } catch (e: any) {
+      alert("Error: " + e.message);
+    }
+  }
+
+  async function handleDeleteMasjid(masjid: Masjid) {
+    if (!confirm(`Are you sure you want to delete "${masjid.name}"? This removes it from the public directory.`)) {
+      return;
+    }
+    try {
+      const res = await fetch(`/api/v1/admin/masjids/${masjid.id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (data.success) {
+        setMasjids(masjids.filter((m) => m.id !== masjid.id));
+        showToast(`Masjid "${masjid.name}" deleted.`);
+      }
+    } catch (e: any) {
+      alert("Error: " + e.message);
+    }
+  }
+
+  async function handleSaveMasjidEdit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingMasjid) return;
+    setSavingEdit(true);
+
+    try {
+      const res = await fetch(`/api/v1/admin/masjids/${editingMasjid.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editingMasjid),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setMasjids(masjids.map((m) => (m.id === editingMasjid.id ? editingMasjid : m)));
+        setEditingMasjid(null);
+        showToast(`Masjid "${editingMasjid.name}" & timings updated successfully.`);
+      } else {
+        alert(data.error || "Failed to update masjid");
+      }
+    } catch (e: any) {
+      alert("Error: " + e.message);
+    } finally {
+      setSavingEdit(false);
+    }
+  }
+
+  // --- PROPOSALS ACTIONS ---
   function handleApproveProposal(id: string) {
     setProposals(proposals.filter((p) => p.id !== id));
     showToast("Proposal approved and applied to live prayer schedule.");
@@ -154,33 +271,11 @@ export default function AdminDashboardPage() {
     showToast("Proposal dismissed.");
   }
 
-  function handleVerifyMasjid(id: string) {
-    setUnverifiedMasjids(unverifiedMasjids.filter((m) => m.id !== id));
-    showToast("Masjid approved and promoted to Verified Tier.");
-  }
-
-  function handleRejectMasjid(id: string) {
-    setUnverifiedMasjids(unverifiedMasjids.filter((m) => m.id !== id));
-    showToast("Masjid entry rejected.");
-  }
-
-  function handleToggleTutorVerification(id: string) {
-    setTutors(
-      tutors.map((t) => (t.id === id ? { ...t, isVerified: !t.isVerified } : t))
-    );
-    showToast("Tutor verification status updated.");
-  }
-
-  function handleDeleteTutor(id: string) {
-    setTutors(tutors.filter((t) => t.id !== id));
-    showToast("Tutor listing removed.");
-  }
-
   if (loading) {
     return (
       <div className="min-h-[70vh] flex flex-col items-center justify-center space-y-3">
         <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
-        <p className="text-xs text-slate-500 font-medium">Verifying admin credentials...</p>
+        <p className="text-xs text-slate-500 font-medium">Loading administrative console...</p>
       </div>
     );
   }
@@ -203,7 +298,7 @@ export default function AdminDashboardPage() {
             Admin Management Dashboard
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-            Review community timing proposals, verify new mosques, and moderate Quran tutors.
+            Full administrative control: edit, pause/on-hold, or delete Masjids, Timings, and Quran Tutors.
           </p>
         </div>
 
@@ -241,54 +336,46 @@ export default function AdminDashboardPage() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
-            Pending Proposals
+            Total Masjids
           </span>
-          <div className="text-2xl font-black text-amber-600">{proposals.length}</div>
-          <span className="text-[11px] text-slate-400 mt-0.5 block">Awaiting vote threshold</span>
+          <div className="text-2xl font-black text-slate-900 dark:text-white">{masjids.length}</div>
+          <span className="text-[11px] text-slate-400 mt-0.5 block">
+            {masjids.filter((m) => m.status === "on_hold").length} on hold
+          </span>
         </div>
 
         <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
-            Unverified Masjids
-          </span>
-          <div className="text-2xl font-black text-slate-900 dark:text-white">{unverifiedMasjids.length}</div>
-          <span className="text-[11px] text-slate-400 mt-0.5 block">Needs GPS verification</span>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
-            Registered Tutors
+            Quran Tutors
           </span>
           <div className="text-2xl font-black text-emerald-600">{tutors.length}</div>
-          <span className="text-[11px] text-slate-400 mt-0.5 block">Quran teachers directory</span>
+          <span className="text-[11px] text-slate-400 mt-0.5 block">
+            {tutors.filter((t) => t.status === "on_hold").length} on hold
+          </span>
         </div>
 
         <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
-            Turnstile Bot Defense
+            Timing Proposals
+          </span>
+          <div className="text-2xl font-black text-amber-600">{proposals.length}</div>
+          <span className="text-[11px] text-slate-400 mt-0.5 block">Community suggestions</span>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+            Security Status
           </span>
           <div className="text-sm font-bold text-emerald-600 flex items-center gap-1.5 mt-1">
             <ShieldCheck className="w-4 h-4" />
-            Active &bull; 100% Pass
+            Active &bull; Turnstile + Auth
           </div>
-          <span className="text-[11px] text-slate-400 mt-0.5 block">Cloudflare Zero-Spam</span>
+          <span className="text-[11px] text-slate-400 mt-0.5 block">Zero-Spam Enforced</span>
         </div>
       </div>
 
       {/* Tabs Navigation */}
       <div className="flex border-b border-slate-200 dark:border-slate-800 text-xs font-bold gap-2 overflow-x-auto">
-        <button
-          onClick={() => setActiveTab("proposals")}
-          className={`pb-3 px-4 transition-all flex items-center gap-1.5 shrink-0 ${
-            activeTab === "proposals"
-              ? "border-b-2 border-emerald-600 text-emerald-700 dark:text-emerald-400"
-              : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
-          }`}
-        >
-          <Clock className="w-4 h-4" />
-          Timing Proposals ({proposals.length})
-        </button>
-
         <button
           onClick={() => setActiveTab("masjids")}
           className={`pb-3 px-4 transition-all flex items-center gap-1.5 shrink-0 ${
@@ -298,7 +385,7 @@ export default function AdminDashboardPage() {
           }`}
         >
           <Building2 className="w-4 h-4" />
-          Unverified Masjids ({unverifiedMasjids.length})
+          Masjids &amp; Timings ({masjids.length})
         </button>
 
         <button
@@ -314,6 +401,18 @@ export default function AdminDashboardPage() {
         </button>
 
         <button
+          onClick={() => setActiveTab("proposals")}
+          className={`pb-3 px-4 transition-all flex items-center gap-1.5 shrink-0 ${
+            activeTab === "proposals"
+              ? "border-b-2 border-emerald-600 text-emerald-700 dark:text-emerald-400"
+              : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+          }`}
+        >
+          <Clock className="w-4 h-4" />
+          Timing Proposals ({proposals.length})
+        </button>
+
+        <button
           onClick={() => setActiveTab("system")}
           className={`pb-3 px-4 transition-all flex items-center gap-1.5 shrink-0 ${
             activeTab === "system"
@@ -322,11 +421,187 @@ export default function AdminDashboardPage() {
           }`}
         >
           <Zap className="w-4 h-4" />
-          System &amp; AI Engines
+          Service Status
         </button>
       </div>
 
-      {/* Tab 1: Timing Proposals */}
+      {/* Tab 1: Masjids & Timings Moderation */}
+      {activeTab === "masjids" && (
+        <div className="space-y-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800 shadow-xs">
+            {masjids.map((masjid) => (
+              <div key={masjid.id} className="p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div className="space-y-2 flex-1">
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <span className="font-bold text-sm text-slate-900 dark:text-white">
+                      {masjid.name}
+                    </span>
+                    <span className="text-xs text-slate-500">
+                      ({masjid.locality}, {masjid.district})
+                    </span>
+
+                    {/* Status Badge */}
+                    {masjid.status === "on_hold" ? (
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-300">
+                        ⏸ ON HOLD (Hidden)
+                      </span>
+                    ) : masjid.status === "verified" ? (
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300">
+                        ✓ Verified Live
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800">
+                        Unverified Community Entry
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Prayer Timings Summary Chips */}
+                  <div className="flex flex-wrap gap-2 text-xs font-mono">
+                    {(["fajr", "dhuhr", "asr", "maghrib", "isha"] as const).map((p) => {
+                      const t = masjid.timings[p];
+                      return (
+                        <span
+                          key={p}
+                          className="px-2 py-1 rounded bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-[11px]"
+                        >
+                          <strong className="uppercase text-[10px] text-slate-400 mr-1">{p}:</strong>
+                          {t?.iqamahTime || "--:--"}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Masjid Actions */}
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => setEditingMasjid({ ...masjid })}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-xs transition-colors"
+                  >
+                    <Edit className="w-3.5 h-3.5" />
+                    Edit &amp; Timings
+                  </button>
+
+                  <button
+                    onClick={() => handleToggleMasjidStatus(masjid)}
+                    className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg font-bold text-xs transition-all ${
+                      masjid.status === "on_hold"
+                        ? "bg-emerald-600 hover:bg-emerald-500 text-white"
+                        : "bg-amber-100 hover:bg-amber-200 text-amber-900 dark:bg-amber-950 dark:text-amber-300"
+                    }`}
+                  >
+                    {masjid.status === "on_hold" ? (
+                      <>
+                        <PlayCircle className="w-3.5 h-3.5" /> Make Live
+                      </>
+                    ) : (
+                      <>
+                        <PauseCircle className="w-3.5 h-3.5" /> Put On Hold
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => handleDeleteMasjid(masjid)}
+                    className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-red-50 dark:hover:bg-red-950 text-red-500 transition-colors"
+                    title="Delete Masjid"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Tab 2: Quran Tutors Moderation */}
+      {activeTab === "tutors" && (
+        <div className="space-y-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800 shadow-xs">
+            {tutors.map((tutor) => (
+              <div key={tutor.id} className="p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div className="space-y-1.5 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-bold text-sm text-slate-900 dark:text-white">
+                      {tutor.name}
+                    </span>
+                    <span className="text-xs text-slate-500 font-medium">({tutor.title})</span>
+
+                    {/* Status Badge */}
+                    {tutor.status === "on_hold" ? (
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-300">
+                        ⏸ ON HOLD (Hidden)
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300">
+                        ✓ Active &amp; Public
+                      </span>
+                    )}
+
+                    {tutor.hasIjazah && (
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 flex items-center gap-1">
+                        <Award className="w-3 h-3 text-amber-600" /> Ijazah
+                      </span>
+                    )}
+                  </div>
+
+                  <p className="text-xs text-slate-500 line-clamp-1">{tutor.bio}</p>
+
+                  <div className="text-[11px] text-slate-400 flex items-center gap-3">
+                    <span>Mode: <strong className="text-slate-600 dark:text-slate-300">{tutor.teachingMode}</strong></span>
+                    <span>&bull;</span>
+                    <span>Fee: <strong className="text-slate-600 dark:text-slate-300">{tutor.feeType === "free" ? "Free" : `₹${tutor.monthlyFeeAmount || "Flexible"}`}</strong></span>
+                    <span>&bull;</span>
+                    <span>WhatsApp: <strong className="font-mono text-slate-600 dark:text-slate-300">{tutor.whatsappNumber}</strong></span>
+                  </div>
+                </div>
+
+                {/* Tutor Actions */}
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => setEditingTutor({ ...tutor })}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-xs transition-colors"
+                  >
+                    <Edit className="w-3.5 h-3.5" />
+                    Edit Profile
+                  </button>
+
+                  <button
+                    onClick={() => handleToggleTutorStatus(tutor)}
+                    className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg font-bold text-xs transition-all ${
+                      tutor.status === "on_hold"
+                        ? "bg-emerald-600 hover:bg-emerald-500 text-white"
+                        : "bg-amber-100 hover:bg-amber-200 text-amber-900 dark:bg-amber-950 dark:text-amber-300"
+                    }`}
+                  >
+                    {tutor.status === "on_hold" ? (
+                      <>
+                        <PlayCircle className="w-3.5 h-3.5" /> Make Live
+                      </>
+                    ) : (
+                      <>
+                        <PauseCircle className="w-3.5 h-3.5" /> Put On Hold
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => handleDeleteTutor(tutor)}
+                    className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-red-50 dark:hover:bg-red-950 text-red-500 transition-colors"
+                    title="Delete Tutor"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Tab 3: Timing Proposals */}
       {activeTab === "proposals" && (
         <div className="space-y-4">
           {proposals.length === 0 ? (
@@ -378,119 +653,7 @@ export default function AdminDashboardPage() {
         </div>
       )}
 
-      {/* Tab 2: Unverified Masjids */}
-      {activeTab === "masjids" && (
-        <div className="space-y-4">
-          {unverifiedMasjids.length === 0 ? (
-            <div className="py-12 text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-8 space-y-2">
-              <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto" />
-              <h3 className="font-bold text-slate-800 dark:text-slate-200">No Pending Submissions</h3>
-              <p className="text-xs text-slate-400">All submitted mosques have been verified.</p>
-            </div>
-          ) : (
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800 shadow-xs">
-              {unverifiedMasjids.map((masjid) => (
-                <div key={masjid.id} className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-sm text-slate-900 dark:text-white">
-                        {masjid.name}
-                      </span>
-                      <span className="text-xs text-slate-500">
-                        {masjid.locality}, {masjid.district}
-                      </span>
-                    </div>
-                    <div className="text-xs text-slate-500 flex items-center gap-2">
-                      <span className="font-mono text-[11px] text-emerald-600 font-semibold">{masjid.gpsAccuracy}</span>
-                      <span>&bull;</span>
-                      <span>Submitted {masjid.submittedAt}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => handleVerifyMasjid(masjid.id)}
-                      className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs"
-                    >
-                      Promote to Verified
-                    </button>
-                    <button
-                      onClick={() => handleRejectMasjid(masjid.id)}
-                      className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-red-600 font-semibold text-xs"
-                    >
-                      Reject
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Tab 3: Quran Tutors Moderation */}
-      {activeTab === "tutors" && (
-        <div className="space-y-4">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800 shadow-xs">
-            {tutors.map((tutor) => (
-              <div key={tutor.id} className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="space-y-1.5">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-bold text-sm text-slate-900 dark:text-white">
-                      {tutor.name}
-                    </span>
-                    <span className="text-xs text-slate-500 font-medium">({tutor.title})</span>
-                    {tutor.isVerified ? (
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                        Verified
-                      </span>
-                    ) : (
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">
-                        Pending Verification
-                      </span>
-                    )}
-                    {tutor.hasIjazah && (
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 flex items-center gap-1">
-                        <Award className="w-3 h-3 text-amber-600" /> Ijazah
-                      </span>
-                    )}
-                  </div>
-
-                  <p className="text-xs text-slate-500 line-clamp-1">{tutor.bio}</p>
-
-                  <div className="text-[11px] text-slate-400 flex items-center gap-3">
-                    <span>Mode: <strong className="text-slate-600 dark:text-slate-300">{tutor.teachingMode}</strong></span>
-                    <span>&bull;</span>
-                    <span>WhatsApp: <strong className="font-mono text-slate-600 dark:text-slate-300">{tutor.whatsappNumber}</strong></span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 shrink-0">
-                  <button
-                    onClick={() => handleToggleTutorVerification(tutor.id)}
-                    className={`px-3 py-1.5 rounded-lg font-bold text-xs transition-all ${
-                      tutor.isVerified
-                        ? "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
-                        : "bg-emerald-600 hover:bg-emerald-700 text-white"
-                    }`}
-                  >
-                    {tutor.isVerified ? "Revoke Verification" : "Mark Verified"}
-                  </button>
-                  <button
-                    onClick={() => handleDeleteTutor(tutor.id)}
-                    className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-red-50 dark:hover:bg-red-950 text-red-500"
-                    title="Remove Tutor Listing"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Tab 4: System & AI Engines */}
+      {/* Tab 4: System & Service Status */}
       {activeTab === "system" && (
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 space-y-4">
           <h3 className="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
@@ -513,6 +676,226 @@ export default function AdminDashboardPage() {
               <p className="text-slate-500">Bot defense on all database writes and tutor postings.</p>
               <span className="text-[10px] text-emerald-600 font-bold block pt-1">Status: Enforcing</span>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- EDIT TUTOR MODAL --- */}
+      {editingTutor && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 max-w-xl w-full shadow-2xl relative space-y-4 my-8">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <h3 className="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
+                <Edit className="w-4 h-4 text-emerald-600" />
+                Edit Tutor Profile: {editingTutor.name}
+              </h3>
+              <button onClick={() => setEditingTutor(null)} className="text-slate-400 hover:text-slate-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveTutorEdit} className="space-y-4 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Full Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={editingTutor.name}
+                    onChange={(e) => setEditingTutor({ ...editingTutor, name: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 dark:bg-slate-800"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Title / Role</label>
+                  <input
+                    type="text"
+                    required
+                    value={editingTutor.title}
+                    onChange={(e) => setEditingTutor({ ...editingTutor, title: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 dark:bg-slate-800"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Biography</label>
+                <textarea
+                  rows={3}
+                  required
+                  value={editingTutor.bio}
+                  onChange={(e) => setEditingTutor({ ...editingTutor, bio: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 dark:bg-slate-800"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">WhatsApp Number</label>
+                  <input
+                    type="text"
+                    required
+                    value={editingTutor.whatsappNumber}
+                    onChange={(e) => setEditingTutor({ ...editingTutor, whatsappNumber: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 dark:bg-slate-800 font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Monthly Fee (₹)</label>
+                  <input
+                    type="number"
+                    value={editingTutor.monthlyFeeAmount || ""}
+                    onChange={(e) => setEditingTutor({ ...editingTutor, monthlyFeeAmount: parseInt(e.target.value) || undefined })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 dark:bg-slate-800 font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 pt-2">
+                <label className="flex items-center gap-2 p-2 rounded-xl border border-slate-200 dark:border-slate-700 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={editingTutor.isVerified}
+                    onChange={(e) => setEditingTutor({ ...editingTutor, isVerified: e.target.checked })}
+                    className="rounded text-emerald-600"
+                  />
+                  <span>Verified Community Badge</span>
+                </label>
+
+                <label className="flex items-center gap-2 p-2 rounded-xl border border-slate-200 dark:border-slate-700 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={editingTutor.hasIjazah}
+                    onChange={(e) => setEditingTutor({ ...editingTutor, hasIjazah: e.target.checked })}
+                    className="rounded text-amber-600"
+                  />
+                  <span>Ijazah Holder</span>
+                </label>
+              </div>
+
+              <div className="pt-4 flex items-center justify-end gap-3 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setEditingTutor(null)}
+                  className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingEdit}
+                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold flex items-center gap-1.5"
+                >
+                  {savingEdit ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* --- EDIT MASJID & TIMINGS MODAL --- */}
+      {editingMasjid && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 max-w-2xl w-full shadow-2xl relative space-y-4 my-8">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <h3 className="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-emerald-600" />
+                Edit Mosque &amp; Prayer Timings: {editingMasjid.name}
+              </h3>
+              <button onClick={() => setEditingMasjid(null)} className="text-slate-400 hover:text-slate-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveMasjidEdit} className="space-y-4 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Masjid Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={editingMasjid.name}
+                    onChange={(e) => setEditingMasjid({ ...editingMasjid, name: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 dark:bg-slate-800"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Locality</label>
+                  <input
+                    type="text"
+                    required
+                    value={editingMasjid.locality}
+                    onChange={(e) => setEditingMasjid({ ...editingMasjid, locality: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 dark:bg-slate-800"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Full Address</label>
+                <input
+                  type="text"
+                  value={editingMasjid.address}
+                  onChange={(e) => setEditingMasjid({ ...editingMasjid, address: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 dark:bg-slate-800"
+                />
+              </div>
+
+              {/* Iqamah Timings Editor */}
+              <div className="pt-2">
+                <span className="font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider block mb-2">
+                  Iqamah Prayer Timings (24-Hour Format HH:MM)
+                </span>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                  {(["fajr", "dhuhr", "asr", "maghrib", "isha"] as const).map((p) => {
+                    const timingRecord = editingMasjid.timings[p];
+                    return (
+                      <div key={p} className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-center space-y-1">
+                        <span className="font-bold uppercase text-[10px] text-slate-500 block">{p}</span>
+                        <input
+                          type="time"
+                          required
+                          value={timingRecord?.iqamahTime || "00:00"}
+                          onChange={(e) =>
+                            setEditingMasjid({
+                              ...editingMasjid,
+                              timings: {
+                                ...editingMasjid.timings,
+                                [p]: {
+                                  ...editingMasjid.timings[p],
+                                  iqamahTime: e.target.value,
+                                },
+                              },
+                            })
+                          }
+                          className="w-full px-1.5 py-1 text-center font-mono font-bold text-emerald-600 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-xs"
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="pt-4 flex items-center justify-end gap-3 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setEditingMasjid(null)}
+                  className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingEdit}
+                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold flex items-center gap-1.5"
+                >
+                  {savingEdit ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  Save Masjid &amp; Timings
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

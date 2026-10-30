@@ -1,4 +1,14 @@
-import { Masjid, TimingProposal, VotePayload, QuranTutor, TutorGender, TutorTeachingMode, QuranSubject } from "./types";
+import {
+  Masjid,
+  MasjidStatus,
+  TimingProposal,
+  VotePayload,
+  QuranTutor,
+  TutorStatus,
+  TutorGender,
+  TutorTeachingMode,
+  QuranSubject,
+} from "./types";
 import { calculateDistanceMeters, isWithinProximityRadius } from "./geo";
 
 // Initial Seed Database: Landmark Masjids + Srinagar Pilot Region Masjids
@@ -192,8 +202,31 @@ let masjidsStore: Masjid[] = [
 
 let proposalsStore: TimingProposal[] = [];
 
-export function getAllMasjids(): Masjid[] {
-  return masjidsStore;
+export function getAllMasjids(includeHidden: boolean = false): Masjid[] {
+  if (includeHidden) return masjidsStore.filter((m) => m.status !== "deleted");
+  return masjidsStore.filter((m) => m.status !== "deleted" && m.status !== "on_hold");
+}
+
+export function updateMasjid(id: string, updates: Partial<Masjid>): Masjid | null {
+  const index = masjidsStore.findIndex((m) => m.id === id || m.slug === id);
+  if (index === -1) return null;
+  masjidsStore[index] = {
+    ...masjidsStore[index],
+    ...updates,
+    updatedAt: new Date().toISOString(),
+  };
+  return masjidsStore[index];
+}
+
+export function setMasjidStatus(id: string, status: MasjidStatus): Masjid | null {
+  return updateMasjid(id, { status });
+}
+
+export function deleteMasjid(id: string): boolean {
+  const index = masjidsStore.findIndex((m) => m.id === id || m.slug === id);
+  if (index === -1) return false;
+  masjidsStore[index].status = "deleted";
+  return true;
 }
 
 export function getMasjidBySlug(slug: string): Masjid | undefined {
@@ -462,8 +495,14 @@ export interface TutorFilters {
   hasIjazah?: boolean;
 }
 
-export function getQuranTutors(filters?: TutorFilters): QuranTutor[] {
+export function getQuranTutors(filters?: TutorFilters, includeHidden: boolean = false): QuranTutor[] {
   let list = [...tutorsStore];
+
+  if (!includeHidden) {
+    list = list.filter((t) => t.status !== "on_hold" && t.status !== "deleted");
+  } else {
+    list = list.filter((t) => t.status !== "deleted");
+  }
 
   if (!filters) return list;
 
@@ -530,4 +569,31 @@ export function addQuranTutor(data: Omit<QuranTutor, "id" | "slug" | "createdAt"
 
   tutorsStore.unshift(newTutor);
   return newTutor;
+}
+
+
+export function getAllQuranTutorsForAdmin(): QuranTutor[] {
+  return tutorsStore.filter((t) => t.status !== "deleted");
+}
+
+export function updateQuranTutor(id: string, updates: Partial<QuranTutor>): QuranTutor | null {
+  const index = tutorsStore.findIndex((t) => t.id === id || t.slug === id);
+  if (index === -1) return null;
+  tutorsStore[index] = {
+    ...tutorsStore[index],
+    ...updates,
+    updatedAt: new Date().toISOString(),
+  };
+  return tutorsStore[index];
+}
+
+export function setQuranTutorStatus(id: string, status: TutorStatus): QuranTutor | null {
+  return updateQuranTutor(id, { status });
+}
+
+export function deleteQuranTutor(id: string): boolean {
+  const index = tutorsStore.findIndex((t) => t.id === id || t.slug === id);
+  if (index === -1) return false;
+  tutorsStore[index].status = "deleted";
+  return true;
 }
